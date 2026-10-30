@@ -273,6 +273,9 @@
                                 <Button x:Name="TabSharesButton" Style="{StaticResource PrimaryButton}" Click="SwitchTab_Shares_Click" Margin="0,0,8,0" Padding="14,7">
                                     <TextBlock x:Name="TabSharesText" Text="📁 Сетевые шары (0)"/>
                                 </Button>
+                                <Button x:Name="TabDfsButton" Style="{StaticResource SecondaryButton}" Click="SwitchTab_Dfs_Click" Margin="0,0,8,0" Padding="14,7">
+                                    <TextBlock x:Name="TabDfsText" Text="🌐 DFS Пространства (0)"/>
+                                </Button>
                                 <Button x:Name="TabSessionsButton" Style="{StaticResource SecondaryButton}" Click="SwitchTab_Sessions_Click" Margin="0,0,8,0" Padding="14,7">
                                     <TextBlock x:Name="TabSessionsText" Text="👥 Активные сессии (0)"/>
                                 </Button>
@@ -476,11 +479,15 @@
                                                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                                                         <Button Style="{StaticResource SecondaryButton}" Padding="9,5" FontSize="12" Margin="0,0,6,0"
                                                                 Tag="{Binding}" Click="CopyUncPath_Click" ToolTip="Скопировать сетевой путь \\server\share">
-                                                            <TextBlock Text="📋 Копировать путь"/>
+                                                            <TextBlock Text="📋 Путь"/>
                                                         </Button>
-                                                        <Button Style="{StaticResource SecondaryButton}" Padding="9,5" FontSize="12"
+                                                        <Button Style="{StaticResource SecondaryButton}" Padding="9,5" FontSize="12" Margin="0,0,6,0"
                                                                 Tag="{Binding}" Click="OpenShareInExplorer_Click" ToolTip="Открыть шару в Проводнике Windows">
                                                             <TextBlock Text="📂 Открыть"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource SecondaryButton}" Padding="9,5" FontSize="12"
+                                                                Tag="{Binding}" Click="PublishShareToDfs_Click" ToolTip="Опубликовать эту шару в пространстве имен DFS">
+                                                            <TextBlock Text="🌐 В DFS"/>
                                                         </Button>
                                                     </StackPanel>
 
@@ -1054,6 +1061,331 @@
                             </StackPanel>
                         </Grid>
                     </ScrollViewer>
+
+                    <!-- TAB 5: DFS NAMESPACES WORKSPACE -->
+                    <Grid x:Name="DfsWorkspaceView" Visibility="Collapsed" Margin="20,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="290"/>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Column 1: DFS Namespace Roots -->
+                        <Border Grid.Column="0"
+                                Background="{DynamicResource BgCardBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="16"
+                                Margin="0,0,12,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                                    <TextBlock Text="🌐 ПРОСТРАНСТВА ИМЕН DFS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrightBrush}"/>
+                                    <TextBlock Text="Доменные (\\domain\Root) и серверные корни" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <Grid Grid.Row="1" Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource PrimaryButton}" Click="OpenAddDfsRootModal_Click" Margin="0,0,6,0" Padding="10,7">
+                                        <TextBlock Text="+ Корень DFS" FontSize="12"/>
+                                    </Button>
+                                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Click="DiscoverDfsRoots_Click" Padding="10,7" ToolTip="Автоматически найти пространства имен DFS в домене AD и на подключенных серверах">
+                                        <TextBlock Text="🔍 Автопоиск" FontSize="12"/>
+                                    </Button>
+                                </Grid>
+
+                                <ListBox x:Name="DfsRootsListBox"
+                                         Grid.Row="2"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ItemContainerStyle="{StaticResource ServerListBoxItemStyle}"
+                                         SelectionChanged="DfsRootsListBox_SelectionChanged"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding ShortName}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding RootPath}" FontSize="11.5" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Description}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right">
+                                                    <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="6,2" HorizontalAlignment="Right">
+                                                        <TextBlock Text="{Binding FolderCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrightBrush}"/>
+                                                    </Border>
+                                                    <Button Style="{StaticResource DangerButton}" Padding="5,2" FontSize="10" Margin="0,6,0,0"
+                                                            Tag="{Binding}" Click="RemoveDfsRootFromList_Click" ToolTip="Убрать из списка">
+                                                        <TextBlock Text="✕"/>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <Button Grid.Row="3" Style="{StaticResource SecondaryButton}" Click="OpenCreateNewDfsRootOnServerModal_Click" Margin="0,10,0,0" Padding="10,8">
+                                    <TextBlock Text="⚡ Создать новый корень DFS на сервере" FontSize="11.5"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Column 2: DFS Folders (Links) inside Selected Root -->
+                        <Grid Grid.Column="1" Margin="0,0,12,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Search + Actions -->
+                            <Grid Grid.Row="0" Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid Grid.Column="0" Margin="0,0,8,0">
+                                    <TextBox x:Name="DfsFolderSearchBox" Style="{StaticResource ModernTextBox}" TextChanged="DfsFolderSearchBox_TextChanged"/>
+                                    <TextBlock Text="🔍 Поиск папки DFS или целевого сервера..."
+                                               Foreground="{DynamicResource TextMutedBrush}" FontSize="12.5" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text, ElementName=DfsFolderSearchBox}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                                <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Click="OpenCreateDfsFolderModal_Click" Margin="0,0,6,0">
+                                    <TextBlock Text="+ Папка DFS"/>
+                                </Button>
+                                <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Click="RefreshSelectedDfsRoot_Click" ToolTip="Обновить папки DFS">
+                                    <TextBlock Text="↻"/>
+                                </Button>
+                            </Grid>
+
+                            <Grid Grid.Row="1">
+                                <ListBox x:Name="DfsFoldersListBox"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         SelectionChanged="DfsFoldersListBox_SelectionChanged"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="Margin" Value="0,0,0,9"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Cursor" Value="Hand"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="card"
+                                                                Background="{DynamicResource BgCardBrush}"
+                                                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="12"
+                                                                Padding="14,12">
+                                                            <ContentPresenter/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="card" Property="Background" Value="{DynamicResource BgCardHoverBrush}"/>
+                                                                <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource BorderHoverBrush}"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsSelected" Value="True">
+                                                                <Setter TargetName="card" Property="Background" Value="{DynamicResource BgCardSelectedBrush}"/>
+                                                                <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource AccentBrightBrush}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <Grid Grid.Row="0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="🌐" FontSize="15" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding RelativeFolderName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <Border Grid.Column="1" Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="7,2">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="Целей: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                            <TextBlock Text="{Binding TargetCount}" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrightBrush}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Grid>
+
+                                                <StackPanel Grid.Row="1" Margin="0,6,0,8">
+                                                    <TextBlock Text="{Binding EntryPath}" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding PrimaryTargetPreview}" FontSize="11.5" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Comment}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"
+                                                               Visibility="{Binding Comment, Converter={StaticResource NullToVis}}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+
+                                                <Grid Grid.Row="2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                        <Button Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11.5" Margin="0,0,6,0"
+                                                                Tag="{Binding}" Click="CopyDfsPath_Click">
+                                                            <TextBlock Text="📋 Копировать DFS"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11.5"
+                                                                Tag="{Binding}" Click="OpenDfsFolderInExplorer_Click">
+                                                            <TextBlock Text="📂 Открыть"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <Button Style="{StaticResource PrimaryButton}" Padding="9,4" FontSize="11.5" Margin="0,0,6,0"
+                                                                Tag="{Binding}" Click="OpenAddTargetToDfsFolder_Click">
+                                                            <TextBlock Text="+ Цель"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource DangerButton}" Padding="9,4" FontSize="11.5"
+                                                                Tag="{Binding}" Click="DeleteDfsFolder_Click"
+                                                                Visibility="{Binding IsRootEntry, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                                                            <TextBlock Text="Удалить"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <!-- Empty state when no DFS Root or Folders -->
+                                <Border x:Name="DfsEmptyStatePanel"
+                                        Visibility="Visible"
+                                        Background="{DynamicResource BgCardBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="14"
+                                        Padding="24"
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Center"
+                                        MaxWidth="420">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="🌐" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                        <TextBlock Text="Пространство имен DFS не выбрано" FontSize="15.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                        <TextBlock Text="Подключите существующий корень DFS (например \\kdb.kz\Shares), запустите автопоиск по домену AD или создайте новый корень DFS на вашем Windows Server."
+                                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,14"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Button Style="{StaticResource SecondaryButton}" Click="DiscoverDfsRoots_Click" Margin="0,0,8,0">
+                                                <TextBlock Text="🔍 Найти в AD"/>
+                                            </Button>
+                                            <Button Style="{StaticResource PrimaryButton}" Click="OpenAddDfsRootModal_Click">
+                                                <TextBlock Text="+ Подключить корень"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Column 3: Selected DFS Folder Targets Inspector -->
+                        <Border Grid.Column="2"
+                                Background="{DynamicResource BgCardBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="18">
+                            <Grid>
+                                <StackPanel x:Name="DfsInspectorEmptyState" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <TextBlock Text="🎯" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Выберите папку DFS" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Здесь отобразятся конечные серверы и шары (Folder Targets), на которые ссылается выбранная папка DFS, с возможностью перехода к их правам SMB и NTFS."
+                                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                </StackPanel>
+
+                                <ScrollViewer x:Name="DfsInspectorContentScroll" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <TextBlock x:Name="DfsInspFolderName" Text="Folder" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock x:Name="DfsInspEntryPath" Text="\\domain\root\folder" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource AccentBrightBrush}" Margin="0,3,0,12" TextWrapping="Wrap"/>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="КОНЕЧНЫЕ ЦЕЛИ НА СЕРВЕРАХ (TARGETS)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Padding="10,4" FontSize="11.5" Click="OpenAddTargetForSelectedDfsFolder_Click">
+                                                <TextBlock Text="+ Добавить цель"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <ItemsControl x:Name="DfsInspTargetsList">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,0,0,10">
+                                                        <StackPanel>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{Binding TargetUncPath}" FontFamily="Consolas" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" TextWrapping="Wrap"/>
+                                                                <TextBlock Grid.Column="1" Text="{Binding StateDisplay}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="8,0,0,0"/>
+                                                            </Grid>
+
+                                                            <TextBlock Text="{Binding ServerName, StringFormat=Сервер: {0}}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,10"/>
+
+                                                            <WrapPanel Orientation="Horizontal">
+                                                                <Button Style="{StaticResource PrimaryButton}" Padding="10,5" FontSize="11.5" Margin="0,0,6,6"
+                                                                        Tag="{Binding}" Click="JumpToDfsTargetShare_Click"
+                                                                        ToolTip="Перейти на этот сервер и открыть настройки прав SMB и NTFS этой шары">
+                                                                    <TextBlock Text="🔐 Права SMB и NTFS шары"/>
+                                                                </Button>
+                                                                <Button Style="{StaticResource SecondaryButton}" Padding="9,5" FontSize="11.5" Margin="0,0,6,6"
+                                                                        Tag="{Binding}" Click="ToggleDfsTargetState_Click">
+                                                                    <TextBlock Text="{Binding ToggleActionText}"/>
+                                                                </Button>
+                                                                <Button Style="{StaticResource DangerButton}" Padding="9,5" FontSize="11.5" Margin="0,0,0,6"
+                                                                        Tag="{Binding}" Click="RemoveDfsTarget_Click">
+                                                                    <TextBlock Text="Удалить цель"/>
+                                                                </Button>
+                                                            </WrapPanel>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
 
                 </Grid>
             </Grid>
@@ -1809,6 +2141,127 @@
                             </StackPanel>
                         </Grid>
                     </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================== MODAL 5: DFS OPERATIONS (CONNECT ROOT / CREATE ROOT / ADD FOLDER & TARGET) ==================== -->
+        <Grid x:Name="DfsModalOverlay" Background="#CC030705" Visibility="Collapsed">
+            <Border Width="680" MaxHeight="720"
+                    Background="{DynamicResource BgModalBrush}"
+                    BorderBrush="{DynamicResource AccentBrightBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="16"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="26,22">
+                <Grid>
+                    <!-- Panel A: Create DFS Folder or Add Target to DFS Folder -->
+                    <StackPanel x:Name="DfsFolderTargetModalPanel" Visibility="Visible">
+                        <TextBlock x:Name="DfsFolderModalTitle" Text="Создать папку в пространстве имен DFS" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock x:Name="DfsFolderModalSubtitle" Text="Свяжите виртуальный путь DFS (\\domain\Root\Folder) с реальной сетевой шарой на сервере"
+                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,16" TextWrapping="Wrap"/>
+
+                        <TextBlock Text="Корень пространства имен DFS *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <TextBox x:Name="DfsModalRootPathBox" Style="{StaticResource ModernTextBox}" FontFamily="Consolas" TextChanged="DfsModalPathInputs_Changed"
+                                 ToolTip="Например: \\kdb.kz\Shares или \\SRV-FS01\Public"/>
+
+                        <TextBlock Text="Имя или подпуть папки в DFS *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,6"/>
+                        <TextBox x:Name="DfsModalFolderNameBox" Style="{StaticResource ModernTextBox}" TextChanged="DfsModalPathInputs_Changed"
+                                 ToolTip="Например: Accounting или IT\Distributives"/>
+
+                        <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,10,0,14">
+                            <StackPanel>
+                                <TextBlock Text="Итоговый виртуальный путь DFS:" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock x:Name="DfsModalFullEntryPreview" Text="\\domain\Root\Folder" FontFamily="Consolas" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrightBrush}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Target Server & Share Selection -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Целевой сервер (Target Server) *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                <TextBox x:Name="DfsModalTargetServerBox" Style="{StaticResource ModernTextBox}" FontFamily="Consolas"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Целевая шара на сервере (Target Share) *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                <TextBox x:Name="DfsModalTargetShareBox" Style="{StaticResource ModernTextBox}" FontFamily="Consolas"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Или быстро выберите шару с текущего активного сервера:" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,5"/>
+                        <ComboBox x:Name="DfsModalQuickShareCombo" Style="{StaticResource ModernComboBox}" SelectionChanged="DfsModalQuickShareCombo_SelectionChanged"/>
+
+                        <TextBlock Text="Комментарий (описание папки DFS)" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,6"/>
+                        <TextBox x:Name="DfsModalCommentBox" Style="{StaticResource ModernTextBox}"/>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                            <Button Style="{StaticResource SecondaryButton}" Click="CloseDfsModal_Click" Margin="0,0,10,0">
+                                <TextBlock Text="Отмена"/>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Click="SaveDfsFolderOrTarget_Click" Padding="18,8">
+                                <TextBlock Text="✓ Сохранить в DFS"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Panel B: Connect Existing DFS Root -->
+                    <StackPanel x:Name="DfsConnectRootModalPanel" Visibility="Collapsed">
+                        <TextBlock Text="Подключить пространство имен DFS" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock Text="Укажите путь к существующему доменному (\\domain\Root) или изолированному (\\server\Root) пространству имен DFS"
+                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,16" TextWrapping="Wrap"/>
+
+                        <TextBlock Text="UNC-путь корня DFS *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <TextBox x:Name="DfsConnectRootInputBox" Style="{StaticResource ModernTextBox}" FontFamily="Consolas"/>
+                        <TextBlock Text="Примеры: \\kdb.kz\Shares, \\kdb.kz\Public, \\SRV-FS01\DFSRoot" FontSize="11.5" Foreground="{DynamicResource TextMutedBrush}" Margin="0,5,0,0"/>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+                            <Button Style="{StaticResource SecondaryButton}" Click="CloseDfsModal_Click" Margin="0,0,10,0">
+                                <TextBlock Text="Отмена"/>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Click="ConfirmConnectDfsRoot_Click" Padding="18,8">
+                                <TextBlock Text="✓ Подключить корень DFS"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Panel C: Create Brand-New DFS Namespace Root on a Server -->
+                    <StackPanel x:Name="DfsCreateNewRootModalPanel" Visibility="Collapsed">
+                        <TextBlock Text="Создать новое пространство имен DFS на сервере" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock Text="Автоматически создаст каталог C:\DFSRoots\[Имя], расшарит его и развернет новый корень DFS через New-DfsnRoot"
+                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,16" TextWrapping="Wrap"/>
+
+                        <TextBlock Text="Сервер пространства имен (Namespace Server) *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <TextBox x:Name="DfsNewRootServerBox" Style="{StaticResource ModernTextBox}" FontFamily="Consolas"/>
+
+                        <TextBlock Text="Имя нового корня DFS (например: Shares или Corp) *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,6"/>
+                        <TextBox x:Name="DfsNewRootNameBox" Style="{StaticResource ModernTextBox}"/>
+
+                        <TextBlock Text="Тип пространства имен DFS" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,6"/>
+                        <ComboBox x:Name="DfsNewRootTypeCombo" Style="{StaticResource ModernComboBox}" SelectedIndex="0">
+                            <ComboBoxItem Content="Доменное пространство имен (DomainV2 — \\domain\Root)" Tag="DomainV2"/>
+                            <ComboBoxItem Content="Изолированное на сервере (Standalone — \\server\Root)" Tag="Standalone"/>
+                        </ComboBox>
+
+                        <CheckBox x:Name="DfsInstallFeatureCheck"
+                                  Style="{StaticResource ToggleSwitchStyle}"
+                                  Content="Автоматически установить роль Windows Server FS-DFS-Namespace, если она еще не установлена"
+                                  IsChecked="True"
+                                  Margin="0,14,0,0"/>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+                            <Button Style="{StaticResource SecondaryButton}" Click="CloseDfsModal_Click" Margin="0,0,10,0">
+                                <TextBlock Text="Отмена"/>
+                            </Button>
+                            <Button x:Name="CreateNewDfsRootBtn" Style="{StaticResource PrimaryButton}" Click="ExecuteCreateNewDfsRoot_Click" Padding="18,8">
+                                <TextBlock Text="⚡ Развернуть корень DFS"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>

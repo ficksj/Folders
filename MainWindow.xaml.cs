@@ -47,6 +47,13 @@ public partial class MainWindow : Window
     // Server Modal State
     private bool _isEditingServer;
 
+    // DFS Namespaces State
+    private readonly ObservableCollection<DfsNamespaceRoot> _dfsRoots = new();
+    private List<DfsFolderItem> _currentDfsFolders = new();
+    private DfsNamespaceRoot? _selectedDfsRoot;
+    private DfsFolderItem? _selectedDfsFolder;
+    private bool _isAddingTargetToExistingDfsFolder;
+
     private CancellationTokenSource? _toastCts;
 
     public MainWindow()
@@ -108,6 +115,22 @@ public partial class MainWindow : Window
 
         ServersListBox.ItemsSource = _servers;
         ModalSmbPermissionsList.ItemsSource = _modalSmbPermissions;
+        DfsRootsListBox.ItemsSource = _dfsRoots;
+
+        _dfsRoots.Clear();
+        if (_config.DfsRoots != null)
+        {
+            foreach (var r in _config.DfsRoots.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                _dfsRoots.Add(new DfsNamespaceRoot
+                {
+                    RootPath = DfsService.NormalizeUncPath(r),
+                    Flavor = "Saved",
+                    Description = "Сохраненное пространство имен"
+                });
+            }
+        }
+        UpdateTabCounters();
 
         // Select last used server or first
         var initialServer = _servers.FirstOrDefault(x => x.Id == _config.LastSelectedServerId)
@@ -118,8 +141,37 @@ public partial class MainWindow : Window
             ServersListBox.SelectedItem = initialServer;
         }
 
-        // Background ping other servers
+        // Background ping other servers & auto-discover DFS roots
         _ = CheckAllServersStatusInBackgroundAsync();
+        _ = AutoDiscoverDfsRootsInBackgroundAsync();
+    }
+
+    private async Task AutoDiscoverDfsRootsInBackgroundAsync()
+    {
+        try
+        {
+            var hostnames = _servers.Select(s => s.Hostname).ToList();
+            var discovered = await DfsService.DiscoverNamespacesAsync(hostnames);
+            bool changed = false;
+            foreach (var d in discovered)
+            {
+                if (!_dfsRoots.Any(x => x.RootPath.Equals(d.RootPath, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _dfsRoots.Add(d);
+                    changed = true;
+                }
+            }
+            if (changed)
+            {
+                SaveServersToConfig();
+                UpdateTabCounters();
+                if (DfsRootsListBox.SelectedItem == null && _dfsRoots.Count > 0)
+                {
+                    DfsRootsListBox.SelectedIndex = 0;
+                }
+            }
+        }
+        catch { }
     }
 
     private async Task CheckAllServersStatusInBackgroundAsync()
@@ -163,6 +215,7 @@ public partial class MainWindow : Window
             Description = s.Description,
             IsLocal = s.IsLocal
         }).ToList();
+        _config.DfsRoots = _dfsRoots.Select(r => r.RootPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         ConfigService.Save(_config);
     }
 
@@ -256,6 +309,8 @@ public partial class MainWindow : Window
         bool showSys = ShowSystemSharesToggle.IsChecked == true;
         int visibleShareCount = _allServerShares.Count(s => showSys || !s.IsSystemOrAdmin);
         TabSharesText.Text = $"📁 Сетевые шары ({visibleShareCount})";
+        if (TabDfsText != null)
+            TabDfsText.Text = $"🌐 DFS Пространства ({_dfsRoots.Count})";
         TabSessionsText.Text = $"👥 Активные сессии ({_allServerSessions.Count})";
         TabFilesText.Text = $"📄 Открытые файлы ({_allServerOpenFiles.Count})";
     }
@@ -412,17 +467,25 @@ public partial class MainWindow : Window
         SessionsWorkspaceView.Visibility = tabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         FilesWorkspaceView.Visibility = tabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
         SettingsWorkspaceView.Visibility = tabIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+        DfsWorkspaceView.Visibility = tabIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
 
         TabSharesButton.Style = (Style)FindResource(tabIndex == 0 ? "PrimaryButton" : "SecondaryButton");
         TabSessionsButton.Style = (Style)FindResource(tabIndex == 1 ? "PrimaryButton" : "SecondaryButton");
         TabFilesButton.Style = (Style)FindResource(tabIndex == 2 ? "PrimaryButton" : "SecondaryButton");
         TabSettingsButton.Style = (Style)FindResource(tabIndex == 3 ? "PrimaryButton" : "SecondaryButton");
+        TabDfsButton.Style = (Style)FindResource(tabIndex == 4 ? "PrimaryButton" : "SecondaryButton");
+
+        if (tabIndex == 4 && DfsRootsListBox.SelectedItem == null && _dfsRoots.Count > 0)
+        {
+            DfsRootsListBox.SelectedIndex = 0;
+        }
     }
 
     private void SwitchTab_Shares_Click(object sender, RoutedEventArgs e) => SwitchMainWorkspaceTab(0);
     private void SwitchTab_Sessions_Click(object sender, RoutedEventArgs e) => SwitchMainWorkspaceTab(1);
     private void SwitchTab_Files_Click(object sender, RoutedEventArgs e) => SwitchMainWorkspaceTab(2);
     private void SwitchTab_Settings_Click(object sender, RoutedEventArgs e) => SwitchMainWorkspaceTab(3);
+    private void SwitchTab_Dfs_Click(object sender, RoutedEventArgs e) => SwitchMainWorkspaceTab(4);
 
     // ==================== RIGHT INSPECTOR PANEL FOR SELECTED SHARE ====================
 
@@ -1780,6 +1843,642 @@ public partial class MainWindow : Window
                 res["AmbientOrb2Brush"] = new SolidColorBrush(Color.FromArgb(0x1F, 16, 185, 129));
                 break;
         }
+    }
+
+    // ==================== DFS NAMESPACES MANAGEMENT ====================
+
+    private async void DiscoverDfsRoots_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var hostnames = _servers.Select(s => s.Hostname).ToList();
+            var discovered = await DfsService.DiscoverNamespacesAsync(hostnames);
+            int added = 0;
+            foreach (var d in discovered)
+            {
+                if (!_dfsRoots.Any(x => x.RootPath.Equals(d.RootPath, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _dfsRoots.Add(d);
+                    added++;
+                }
+            }
+            SaveServersToConfig();
+            UpdateTabCounters();
+
+            if (DfsRootsListBox.SelectedItem == null && _dfsRoots.Count > 0)
+            {
+                DfsRootsListBox.SelectedIndex = 0;
+            }
+
+            if (added > 0)
+                ShowToast($"Найдено и добавлено пространств имен DFS: {added}");
+            else if (_dfsRoots.Count > 0)
+                ShowToast("Новых корней DFS не обнаружено (все доступные уже в списке)");
+            else
+                ShowToast("Пространства имен DFS не обнаружены. Вы можете подключить корень вручную или создать новый на сервере.");
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Ошибка автопоиска DFS: {ex.Message}", isError: true);
+        }
+    }
+
+    private async void DfsRootsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DfsRootsListBox.SelectedItem is not DfsNamespaceRoot root)
+        {
+            _selectedDfsRoot = null;
+            _currentDfsFolders.Clear();
+            ApplyDfsFolderFilter();
+            return;
+        }
+
+        _selectedDfsRoot = root;
+        await LoadSelectedDfsRootFoldersAsync(root);
+    }
+
+    private async Task LoadSelectedDfsRootFoldersAsync(DfsNamespaceRoot root)
+    {
+        try
+        {
+            _currentDfsFolders = await DfsService.GetDfsFoldersAsync(root.RootPath);
+            root.FolderCount = _currentDfsFolders.Count(f => !f.IsRootEntry);
+            ApplyDfsFolderFilter();
+        }
+        catch (Exception ex)
+        {
+            _currentDfsFolders.Clear();
+            ApplyDfsFolderFilter();
+            ShowToast($"Ошибка чтения DFS '{root.RootPath}': {ex.Message}", isError: true);
+        }
+    }
+
+    private void ApplyDfsFolderFilter()
+    {
+        if (DfsFoldersListBox == null) return;
+
+        if (_selectedDfsRoot == null)
+        {
+            DfsFoldersListBox.ItemsSource = null;
+            DfsEmptyStatePanel.Visibility = Visibility.Visible;
+            DfsInspectorEmptyState.Visibility = Visibility.Visible;
+            DfsInspectorContentScroll.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        DfsEmptyStatePanel.Visibility = Visibility.Collapsed;
+        string q = (DfsFolderSearchBox?.Text ?? "").Trim();
+
+        var filtered = _currentDfsFolders.Where(f =>
+        {
+            if (string.IsNullOrEmpty(q)) return true;
+            return f.EntryPath.Contains(q, StringComparison.OrdinalIgnoreCase)
+                   || f.RelativeFolderName.Contains(q, StringComparison.OrdinalIgnoreCase)
+                   || f.Comment.Contains(q, StringComparison.OrdinalIgnoreCase)
+                   || f.Targets.Any(t => t.TargetUncPath.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }).ToList();
+
+        DfsFoldersListBox.ItemsSource = filtered;
+        if (filtered.Count > 0)
+        {
+            DfsFoldersListBox.SelectedIndex = 0;
+        }
+        else
+        {
+            _selectedDfsFolder = null;
+            DfsInspectorEmptyState.Visibility = Visibility.Visible;
+            DfsInspectorContentScroll.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void DfsFolderSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ApplyDfsFolderFilter();
+    }
+
+    private async void RefreshSelectedDfsRoot_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedDfsRoot != null)
+        {
+            await LoadSelectedDfsRootFoldersAsync(_selectedDfsRoot);
+            ShowToast($"Папки DFS в {_selectedDfsRoot.RootPath} обновлены");
+        }
+    }
+
+    private void DfsFoldersListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DfsFoldersListBox.SelectedItem is not DfsFolderItem folder)
+        {
+            _selectedDfsFolder = null;
+            DfsInspectorEmptyState.Visibility = Visibility.Visible;
+            DfsInspectorContentScroll.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _selectedDfsFolder = folder;
+        DfsInspectorEmptyState.Visibility = Visibility.Collapsed;
+        DfsInspectorContentScroll.Visibility = Visibility.Visible;
+
+        DfsInspFolderName.Text = folder.RelativeFolderName;
+        DfsInspEntryPath.Text = folder.EntryPath;
+        DfsInspTargetsList.ItemsSource = folder.Targets.ToList();
+    }
+
+    private void CopyDfsPath_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is DfsFolderItem folder)
+        {
+            Clipboard.SetText(folder.EntryPath);
+            ShowToast($"Путь DFS скопирован: {folder.EntryPath}");
+        }
+    }
+
+    private void OpenDfsFolderInExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is DfsFolderItem folder)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = folder.EntryPath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"Ошибка открытия Проводника: {ex.Message}", isError: true);
+            }
+        }
+    }
+
+    private void RemoveDfsRootFromList_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is DfsNamespaceRoot root)
+        {
+            _dfsRoots.Remove(root);
+            SaveServersToConfig();
+            UpdateTabCounters();
+            if (_dfsRoots.Count > 0 && DfsRootsListBox.SelectedItem == null)
+                DfsRootsListBox.SelectedIndex = 0;
+        }
+    }
+
+    // ---- Modal Mode B: Connect Existing DFS Root ----
+
+    private void OpenAddDfsRootModal_Click(object sender, RoutedEventArgs e)
+    {
+        DfsFolderTargetModalPanel.Visibility = Visibility.Collapsed;
+        DfsConnectRootModalPanel.Visibility = Visibility.Visible;
+        DfsCreateNewRootModalPanel.Visibility = Visibility.Collapsed;
+
+        string dom = Environment.GetEnvironmentVariable("USERDNSDOMAIN") ?? Environment.MachineName;
+        DfsConnectRootInputBox.Text = $@"\\{dom}\";
+        DfsModalOverlay.Visibility = Visibility.Visible;
+    }
+
+    private async void ConfirmConnectDfsRoot_Click(object sender, RoutedEventArgs e)
+    {
+        string raw = DfsConnectRootInputBox.Text.Trim();
+        string norm = DfsService.NormalizeUncPath(raw);
+        if (string.IsNullOrWhiteSpace(norm) || norm.Count(c => c == '\\') < 3)
+        {
+            ShowToast("Введите корректный UNC-путь корня DFS в формате \\\\домен_или_сервер\\ИмяКорня", isError: true);
+            return;
+        }
+
+        try
+        {
+            var folders = await DfsService.GetDfsFoldersAsync(norm);
+            var existing = _dfsRoots.FirstOrDefault(x => x.RootPath.Equals(norm, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                existing = new DfsNamespaceRoot
+                {
+                    RootPath = norm,
+                    Flavor = "Connected",
+                    Description = "Подключено вручную",
+                    FolderCount = folders.Count(f => !f.IsRootEntry)
+                };
+                _dfsRoots.Add(existing);
+                SaveServersToConfig();
+                UpdateTabCounters();
+            }
+
+            DfsModalOverlay.Visibility = Visibility.Collapsed;
+            SwitchMainWorkspaceTab(4);
+            DfsRootsListBox.SelectedItem = existing;
+            ShowToast($"Пространство имен DFS «{norm}» успешно подключено");
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Не удалось подключить '{norm}': {ex.Message}", isError: true);
+        }
+    }
+
+    // ---- Modal Mode C: Create New DFS Root on Server ----
+
+    private void OpenCreateNewDfsRootOnServerModal_Click(object sender, RoutedEventArgs e)
+    {
+        DfsFolderTargetModalPanel.Visibility = Visibility.Collapsed;
+        DfsConnectRootModalPanel.Visibility = Visibility.Collapsed;
+        DfsCreateNewRootModalPanel.Visibility = Visibility.Visible;
+
+        DfsNewRootServerBox.Text = _currentServer?.Hostname ?? Environment.MachineName;
+        DfsNewRootNameBox.Text = "Shares";
+        DfsModalOverlay.Visibility = Visibility.Visible;
+    }
+
+    private async void ExecuteCreateNewDfsRoot_Click(object sender, RoutedEventArgs e)
+    {
+        string srv = DfsNewRootServerBox.Text.Trim();
+        string rName = DfsNewRootNameBox.Text.Trim();
+        string rType = GetSelectedComboTag(DfsNewRootTypeCombo, "DomainV2");
+        bool installRole = DfsInstallFeatureCheck.IsChecked == true;
+
+        if (string.IsNullOrWhiteSpace(srv) || string.IsNullOrWhiteSpace(rName))
+        {
+            ShowToast("Укажите имя сервера и название нового корня DFS", isError: true);
+            return;
+        }
+
+        CreateNewDfsRootBtn.IsEnabled = false;
+        try
+        {
+            ShowToast($"Развертывание корня DFS '{rName}' на сервере {srv}...");
+            string createdRootPath = await DfsService.CreateDfsNamespaceRootOnServerAsync(_psService, srv, rName, rType, installRole);
+            string norm = DfsService.NormalizeUncPath(createdRootPath);
+
+            var existing = _dfsRoots.FirstOrDefault(x => x.RootPath.Equals(norm, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                existing = new DfsNamespaceRoot
+                {
+                    RootPath = norm,
+                    Flavor = rType,
+                    Description = $"Создано на {srv}"
+                };
+                _dfsRoots.Add(existing);
+                SaveServersToConfig();
+                UpdateTabCounters();
+            }
+
+            DfsModalOverlay.Visibility = Visibility.Collapsed;
+            SwitchMainWorkspaceTab(4);
+            DfsRootsListBox.SelectedItem = existing;
+            ShowToast($"Корень DFS «{norm}» успешно создан!");
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Ошибка создания корня DFS: {ex.Message}", isError: true);
+        }
+        finally
+        {
+            CreateNewDfsRootBtn.IsEnabled = true;
+        }
+    }
+
+    // ---- Modal Mode A: Create DFS Folder or Add Target / Publish SMB Share to DFS ----
+
+    private void PopulateQuickShareComboForDfsModal()
+    {
+        string srvHost = _currentServer?.Hostname ?? Environment.MachineName;
+        if (srvHost.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+            srvHost = Environment.MachineName;
+
+        var items = _allServerShares
+            .Where(s => !s.IsSystemOrAdmin)
+            .Select(s => new ComboBoxItem
+            {
+                Content = $@"\\{srvHost}\{s.Name} ({s.Path})",
+                Tag = $"{srvHost}|{s.Name}"
+            })
+            .ToList();
+
+        DfsModalQuickShareCombo.ItemsSource = items;
+        DfsModalQuickShareCombo.SelectedIndex = -1;
+    }
+
+    private void DfsModalQuickShareCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DfsModalQuickShareCombo.SelectedItem is ComboBoxItem item && item.Tag is string tag)
+        {
+            var parts = tag.Split('|');
+            if (parts.Length == 2)
+            {
+                DfsModalTargetServerBox.Text = parts[0];
+                DfsModalTargetShareBox.Text = parts[1];
+                if (string.IsNullOrWhiteSpace(DfsModalFolderNameBox.Text) && DfsModalFolderNameBox.IsEnabled)
+                {
+                    DfsModalFolderNameBox.Text = parts[1].TrimEnd('$');
+                }
+            }
+        }
+    }
+
+    private void OpenCreateDfsFolderModal_Click(object sender, RoutedEventArgs e)
+    {
+        OpenDfsFolderOrTargetModal(
+            rootPath: _selectedDfsRoot?.RootPath ?? "",
+            folderRelName: "",
+            targetServer: _currentServer?.Hostname ?? Environment.MachineName,
+            targetShare: "",
+            comment: "",
+            isAddingTargetOnly: false);
+    }
+
+    private void OpenAddTargetToDfsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is DfsFolderItem folder)
+        {
+            OpenDfsFolderOrTargetModal(
+                rootPath: folder.RootPath,
+                folderRelName: folder.IsRootEntry ? "" : folder.RelativeFolderName,
+                targetServer: _currentServer?.Hostname ?? Environment.MachineName,
+                targetShare: "",
+                comment: folder.Comment,
+                isAddingTargetOnly: true);
+        }
+    }
+
+    private void OpenAddTargetForSelectedDfsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedDfsFolder != null)
+        {
+            OpenDfsFolderOrTargetModal(
+                rootPath: _selectedDfsFolder.RootPath,
+                folderRelName: _selectedDfsFolder.IsRootEntry ? "" : _selectedDfsFolder.RelativeFolderName,
+                targetServer: _currentServer?.Hostname ?? Environment.MachineName,
+                targetShare: "",
+                comment: _selectedDfsFolder.Comment,
+                isAddingTargetOnly: true);
+        }
+    }
+
+    private void PublishShareToDfs_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not SmbShareItem share)
+            return;
+
+        string srv = string.IsNullOrWhiteSpace(share.ServerHostname) || share.ServerHostname == "localhost"
+            ? Environment.MachineName
+            : share.ServerHostname;
+
+        string defaultRoot = _selectedDfsRoot?.RootPath
+                             ?? _dfsRoots.FirstOrDefault()?.RootPath
+                             ?? $@"\\{Environment.GetEnvironmentVariable("USERDNSDOMAIN") ?? srv}\Shares";
+
+        OpenDfsFolderOrTargetModal(
+            rootPath: defaultRoot,
+            folderRelName: share.Name.TrimEnd('$'),
+            targetServer: srv,
+            targetShare: share.Name,
+            comment: share.Description,
+            isAddingTargetOnly: false);
+    }
+
+    private void OpenDfsFolderOrTargetModal(
+        string rootPath,
+        string folderRelName,
+        string targetServer,
+        string targetShare,
+        string comment,
+        bool isAddingTargetOnly)
+    {
+        _isAddingTargetToExistingDfsFolder = isAddingTargetOnly;
+
+        DfsFolderTargetModalPanel.Visibility = Visibility.Visible;
+        DfsConnectRootModalPanel.Visibility = Visibility.Collapsed;
+        DfsCreateNewRootModalPanel.Visibility = Visibility.Collapsed;
+
+        DfsFolderModalTitle.Text = isAddingTargetOnly
+            ? "Добавить сервер-цель (Target) в папку DFS"
+            : "Создать папку (ссылку) в пространстве имен DFS";
+
+        DfsModalRootPathBox.Text = rootPath;
+        DfsModalRootPathBox.IsEnabled = !isAddingTargetOnly;
+
+        DfsModalFolderNameBox.Text = folderRelName;
+        DfsModalFolderNameBox.IsEnabled = !isAddingTargetOnly;
+
+        DfsModalTargetServerBox.Text = targetServer.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            ? Environment.MachineName
+            : targetServer;
+        DfsModalTargetShareBox.Text = targetShare;
+        DfsModalCommentBox.Text = comment;
+
+        PopulateQuickShareComboForDfsModal();
+        UpdateDfsModalPreview();
+        DfsModalOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void DfsModalPathInputs_Changed(object sender, TextChangedEventArgs e)
+    {
+        UpdateDfsModalPreview();
+    }
+
+    private void UpdateDfsModalPreview()
+    {
+        if (DfsModalFullEntryPreview == null) return;
+        string r = DfsService.NormalizeUncPath(DfsModalRootPathBox.Text);
+        string f = (DfsModalFolderNameBox.Text ?? "").Trim().Trim('\\');
+        DfsModalFullEntryPreview.Text = string.IsNullOrWhiteSpace(f) ? r : $@"{r}\{f}";
+    }
+
+    private async void SaveDfsFolderOrTarget_Click(object sender, RoutedEventArgs e)
+    {
+        string rootPath = DfsService.NormalizeUncPath(DfsModalRootPathBox.Text);
+        string folderRel = DfsModalFolderNameBox.Text.Trim().Trim('\\');
+        string targetServer = DfsModalTargetServerBox.Text.Trim();
+        string targetShare = DfsModalTargetShareBox.Text.Trim();
+        string comment = DfsModalCommentBox.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(rootPath) || rootPath.Count(c => c == '\\') < 3)
+        {
+            ShowToast("Укажите корректный корень DFS (например \\\\domain\\Root)", isError: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(folderRel) && !_isAddingTargetToExistingDfsFolder)
+        {
+            ShowToast("Укажите имя папки в пространстве имен DFS", isError: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(targetServer) || string.IsNullOrWhiteSpace(targetShare))
+        {
+            ShowToast("Укажите целевой сервер и имя шары на сервере", isError: true);
+            return;
+        }
+
+        string fullEntryPath = string.IsNullOrWhiteSpace(folderRel) ? rootPath : $@"{rootPath}\{folderRel}";
+
+        try
+        {
+            await DfsService.AddDfsFolderOrTargetAsync(
+                fullEntryPath,
+                targetServer,
+                targetShare,
+                comment,
+                createNewLink: !_isAddingTargetToExistingDfsFolder);
+
+            // Ensure root is in our list
+            var rootNode = _dfsRoots.FirstOrDefault(x => x.RootPath.Equals(rootPath, StringComparison.OrdinalIgnoreCase));
+            if (rootNode == null)
+            {
+                rootNode = new DfsNamespaceRoot
+                {
+                    RootPath = rootPath,
+                    Flavor = "Domain",
+                    Description = "Добавлено при публикации"
+                };
+                _dfsRoots.Add(rootNode);
+                SaveServersToConfig();
+                UpdateTabCounters();
+            }
+
+            DfsModalOverlay.Visibility = Visibility.Collapsed;
+            SwitchMainWorkspaceTab(4);
+            DfsRootsListBox.SelectedItem = rootNode;
+            await LoadSelectedDfsRootFoldersAsync(rootNode);
+
+            var matchFolder = _currentDfsFolders.FirstOrDefault(x => x.EntryPath.Equals(fullEntryPath, StringComparison.OrdinalIgnoreCase));
+            if (matchFolder != null)
+            {
+                DfsFoldersListBox.SelectedItem = matchFolder;
+            }
+
+            ShowToast($"Опубликовано в DFS: {fullEntryPath} -> \\\\{targetServer}\\{targetShare}");
+        }
+        catch (Exception ex)
+        {
+            ShowToast(ex.Message, isError: true);
+        }
+    }
+
+    private async void DeleteDfsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not DfsFolderItem folder || folder.IsRootEntry)
+            return;
+
+        if (_config.ConfirmDangerousActions)
+        {
+            var res = MessageBox.Show(
+                $"Удалить папку «{folder.RelativeFolderName}» ({folder.EntryPath}) из пространства имен DFS?\n\nСами сетевые шары и файлы на конечных серверах удалены НЕ будут.",
+                "Удаление папки DFS — Folders",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (res != MessageBoxResult.Yes) return;
+        }
+
+        try
+        {
+            await DfsService.RemoveDfsFolderOrTargetAsync(folder.EntryPath);
+            ShowToast($"Папка DFS «{folder.RelativeFolderName}» удалена");
+            if (_selectedDfsRoot != null)
+                await LoadSelectedDfsRootFoldersAsync(_selectedDfsRoot);
+        }
+        catch (Exception ex)
+        {
+            ShowToast(ex.Message, isError: true);
+        }
+    }
+
+    private async void ToggleDfsTargetState_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not DfsTargetItem target || _selectedDfsFolder == null)
+            return;
+
+        try
+        {
+            bool newOnlineState = !target.IsOnline;
+            await DfsService.SetDfsTargetStateAsync(_selectedDfsFolder.EntryPath, target.ServerName, target.ShareName, newOnlineState);
+            ShowToast($"Цель {target.TargetUncPath} переведена в состояние: {(newOnlineState ? "Online" : "Offline")}");
+            if (_selectedDfsRoot != null)
+                await LoadSelectedDfsRootFoldersAsync(_selectedDfsRoot);
+        }
+        catch (Exception ex)
+        {
+            ShowToast(ex.Message, isError: true);
+        }
+    }
+
+    private async void RemoveDfsTarget_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not DfsTargetItem target || _selectedDfsFolder == null)
+            return;
+
+        if (_config.ConfirmDangerousActions)
+        {
+            var res = MessageBox.Show(
+                $"Удалить конечную цель «{target.TargetUncPath}» из папки DFS «{_selectedDfsFolder.EntryPath}»?",
+                "Удаление цели DFS — Folders",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (res != MessageBoxResult.Yes) return;
+        }
+
+        try
+        {
+            await DfsService.RemoveDfsFolderOrTargetAsync(_selectedDfsFolder.EntryPath, target.ServerName, target.ShareName);
+            ShowToast($"Цель {target.TargetUncPath} удалена из папки DFS");
+            if (_selectedDfsRoot != null)
+                await LoadSelectedDfsRootFoldersAsync(_selectedDfsRoot);
+        }
+        catch (Exception ex)
+        {
+            ShowToast(ex.Message, isError: true);
+        }
+    }
+
+    private async void JumpToDfsTargetShare_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not DfsTargetItem target)
+            return;
+
+        string srvName = target.ServerName.Trim().TrimStart('\\');
+        var serverNode = _servers.FirstOrDefault(s =>
+            s.Hostname.Equals(srvName, StringComparison.OrdinalIgnoreCase) ||
+            (s.IsLocal && srvName.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)));
+
+        if (serverNode == null)
+        {
+            serverNode = new ServerNode
+            {
+                Hostname = srvName,
+                DisplayName = srvName,
+                Description = "Добавлен из цели DFS"
+            };
+            _servers.Add(serverNode);
+            SaveServersToConfig();
+        }
+
+        SwitchMainWorkspaceTab(0);
+        ServersListBox.SelectedItem = serverNode;
+        await LoadServerDataAsync(serverNode);
+
+        // If target share is hidden/admin, ensure it's found
+        var shareItem = _allServerShares.FirstOrDefault(x => x.Name.Equals(target.ShareName, StringComparison.OrdinalIgnoreCase));
+        if (shareItem != null)
+        {
+            if (shareItem.IsSystemOrAdmin && ShowSystemSharesToggle.IsChecked != true)
+                ShowSystemSharesToggle.IsChecked = true;
+
+            SharesListBox.SelectedItem = shareItem;
+            await OpenShareEditorModalAsync(shareItem, initialTab: 1);
+        }
+        else
+        {
+            ShowToast($"Сервер {srvName} открыт, но шара '{target.ShareName}' не найдена в списке", isError: true);
+        }
+    }
+
+    private void CloseDfsModal_Click(object sender, RoutedEventArgs e)
+    {
+        DfsModalOverlay.Visibility = Visibility.Collapsed;
     }
 
     // ==================== HELPERS & TOAST ====================

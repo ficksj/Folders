@@ -364,3 +364,103 @@ public class AdServerCandidate : ObservableObject
     public string EffectiveHost => string.IsNullOrWhiteSpace(DnsHostName) ? Name : DnsHostName;
 }
 
+public class DfsNamespaceRoot : ObservableObject
+{
+    private string _rootPath = string.Empty; // e.g. \\kdb.kz\Shares or \\SRV-01\Public
+    private string _flavor = "DomainV2";     // DomainV2, DomainV1, Standalone
+    private string _description = string.Empty;
+    private int _folderCount;
+
+    public string RootPath
+    {
+        get => _rootPath;
+        set
+        {
+            if (SetProperty(ref _rootPath, value))
+            {
+                OnPropertyChanged(nameof(ShortName));
+                OnPropertyChanged(nameof(HostOrDomain));
+            }
+        }
+    }
+
+    public string Flavor
+    {
+        get => _flavor;
+        set => SetProperty(ref _flavor, value);
+    }
+
+    public string Description
+    {
+        get => _description;
+        set => SetProperty(ref _description, value);
+    }
+
+    public int FolderCount
+    {
+        get => _folderCount;
+        set => SetProperty(ref _folderCount, value);
+    }
+
+    public string ShortName
+    {
+        get
+        {
+            var trimmed = (RootPath ?? "").TrimEnd('\\');
+            int idx = trimmed.LastIndexOf('\\');
+            return idx >= 0 && idx < trimmed.Length - 1 ? trimmed[(idx + 1)..] : trimmed;
+        }
+    }
+
+    public string HostOrDomain
+    {
+        get
+        {
+            var trimmed = (RootPath ?? "").TrimStart('\\');
+            int idx = trimmed.IndexOf('\\');
+            return idx > 0 ? trimmed[..idx] : trimmed;
+        }
+    }
+}
+
+public class DfsTargetItem : ObservableObject
+{
+    public string ServerName { get; set; } = string.Empty;
+    public string ShareName { get; set; } = string.Empty;
+    public uint StateRaw { get; set; } = 2; // 1 = Offline, 2 = Online, 4 = Active
+
+    public bool IsOnline => (StateRaw & 2) != 0 || (StateRaw & 4) != 0;
+    public string TargetUncPath => $@"\\{ServerName}\{ShareName}";
+    public string StateDisplay => IsOnline ? "🟢 Активен (Online)" : "🔴 Отключен (Offline)";
+    public string ToggleActionText => IsOnline ? "Отключить" : "Включить";
+}
+
+public class DfsFolderItem : ObservableObject
+{
+    public string EntryPath { get; set; } = string.Empty; // e.g. \\kdb.kz\Shares\Accounting
+    public string RootPath { get; set; } = string.Empty;  // e.g. \\kdb.kz\Shares
+    public string Comment { get; set; } = string.Empty;
+    public uint StateRaw { get; set; } = 1;
+    public bool IsRootEntry { get; set; }
+    public List<DfsTargetItem> Targets { get; set; } = new();
+
+    public string RelativeFolderName
+    {
+        get
+        {
+            if (IsRootEntry) return "(Корень пространства имен)";
+            if (!string.IsNullOrWhiteSpace(RootPath) &&
+                EntryPath.StartsWith(RootPath, StringComparison.OrdinalIgnoreCase))
+            {
+                var rel = EntryPath[RootPath.Length..].Trim('\\');
+                return string.IsNullOrWhiteSpace(rel) ? EntryPath : rel;
+            }
+            return EntryPath;
+        }
+    }
+
+    public int TargetCount => Targets.Count;
+    public string PrimaryTargetPreview => Targets.Count > 0 ? Targets[0].TargetUncPath : "Нет целей";
+}
+
+

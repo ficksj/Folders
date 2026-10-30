@@ -25,6 +25,7 @@ public class AppConfig
     public bool ConfirmDangerousActions { get; set; } = true;
 
     public List<SavedServerEntry> Servers { get; set; } = new();
+    public List<string> DfsRoots { get; set; } = new();
 }
 
 public class SavedServerEntry
