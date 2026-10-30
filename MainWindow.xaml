@@ -1,0 +1,1833 @@
+<Window x:Class="ShareManager.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Folders — by Crazy Monkeys"
+        Icon="Assets/monkey.ico"
+        Width="1460" Height="900"
+        MinWidth="1120" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BgAppBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="Segoe UI">
+
+    <Grid>
+        <!-- ==================== AMBIENT GLASS GLOW BACKDROP ==================== -->
+        <Canvas x:Name="AmbientGlassLayer" IsHitTestVisible="False" ClipToBounds="True">
+            <!-- Top-Left Neon Emerald Glow Orb -->
+            <Ellipse Width="560" Height="560" Canvas.Left="-140" Canvas.Top="-160"
+                     Fill="{DynamicResource AmbientOrb1Brush}">
+                <Ellipse.Effect>
+                    <BlurEffect Radius="130"/>
+                </Ellipse.Effect>
+            </Ellipse>
+            <!-- Bottom-Right Cyber Emerald Glow Orb -->
+            <Ellipse Width="680" Height="680" Canvas.Right="-180" Canvas.Bottom="-200"
+                     Fill="{DynamicResource AmbientOrb2Brush}">
+                <Ellipse.Effect>
+                    <BlurEffect Radius="150"/>
+                </Ellipse.Effect>
+            </Ellipse>
+            <!-- Center Subtle Glass Accent Orb -->
+            <Ellipse Width="420" Height="420" Canvas.Left="520" Canvas.Top="240"
+                     Fill="{DynamicResource AmbientOrb2Brush}" Opacity="0.55">
+                <Ellipse.Effect>
+                    <BlurEffect Radius="140"/>
+                </Ellipse.Effect>
+            </Ellipse>
+        </Canvas>
+
+        <!-- ==================== MAIN WORKSPACE LAYOUT ==================== -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="310"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ==================== LEFT SIDEBAR: SERVERS & BRANDING ==================== -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource BgSidebarBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- App Brand Header: Pixel Monkey + Folders + Crazy Monkeys -->
+                    <Border Grid.Row="0" Padding="18,18,18,16" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Pixel Art Monkey Icon Container with Neon Glass Border -->
+                            <Border Grid.Column="0" Width="48" Height="48" CornerRadius="12"
+                                    Background="#10281C"
+                                    BorderBrush="{DynamicResource AccentBrightBrush}"
+                                    BorderThickness="1.5"
+                                    Margin="0,0,13,0"
+                                    Padding="4">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#00FF66" BlurRadius="14" ShadowDepth="0" Opacity="0.35"/>
+                                </Border.Effect>
+                                <Image Source="Assets/monkey.png"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                       Stretch="Uniform"/>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Folders" FontSize="20" FontWeight="ExtraBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Border Background="{DynamicResource AccentSubtleBrush}"
+                                            BorderBrush="{DynamicResource BorderHoverBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="5"
+                                            Padding="6,1.5"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="by Crazy Monkeys" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrightBrush}"/>
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock x:Name="CurrentUserText" Text="Учетная запись: ..." FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Server Actions Bar -->
+                    <Grid Grid.Row="1" Margin="14,14,14,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Style="{StaticResource PrimaryButton}" Click="OpenAddServerModal_Click" Margin="0,0,6,0" Padding="10,8">
+                            <TextBlock Text="+ Добавить сервер" FontSize="12.5"/>
+                        </Button>
+                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Click="OpenAdImportModal_Click" Padding="10,8" ToolTip="Найти серверы Windows в Active Directory">
+                            <TextBlock Text="🔍 Из AD" FontSize="12.5"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Server List -->
+                    <Grid Grid.Row="2" Margin="14,6,14,10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="ПОДКЛЮЧЕННЫЕ СЕРВЕРЫ" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Margin="4,0,0,8"/>
+
+                        <ListBox x:Name="ServersListBox"
+                                 Grid.Row="1"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ItemContainerStyle="{StaticResource ServerListBoxItemStyle}"
+                                 SelectionChanged="ServersListBox_SelectionChanged"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Status Dot -->
+                                        <Ellipse Grid.Column="0" Width="10" Height="10"
+                                                 Fill="{Binding Status, Converter={StaticResource StatusToBrushConverter}}"
+                                                 VerticalAlignment="Top" Margin="0,5,10,0"
+                                                 ToolTip="{Binding StatusText}"/>
+
+                                        <!-- Server Info -->
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding EffectiveTitle}" FontWeight="SemiBold" FontSize="13.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Hostname}" FontSize="11.5" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding OsInfo}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"
+                                                       Visibility="{Binding OsInfo, Converter={StaticResource NullToVis}}" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+
+                                        <!-- Share Count Badge -->
+                                        <Border Grid.Column="2" Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="7,3" VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding ShareCount}" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrightBrush}" ToolTip="Количество шар"/>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+
+                    <!-- Sidebar Footer: Crazy Monkeys Signature & Elevation Status -->
+                    <Border Grid.Row="3" Padding="14,12" Background="#99040806" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,1,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="ElevationStatusText" Text="Права процесса: ..." FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <TextBlock Text="🐒 Crafted by Crazy Monkeys" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" Margin="0,3,0,0"/>
+                                </StackPanel>
+                                <Button x:Name="RestartAsAdminButton"
+                                        Grid.Column="1"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="8,5"
+                                        FontSize="11"
+                                        Click="RestartAsAdminButton_Click"
+                                        Visibility="Collapsed"
+                                        ToolTip="Перезапустить приложение с правами локального Администратора">
+                                    <TextBlock Text="🛡 От Админа"/>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ==================== RIGHT MAIN CONTENT AREA ==================== -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Server Header Glass Bar -->
+                <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="24,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Selected Server Title & Metadata -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse x:Name="HeaderStatusDot" Width="11" Height="11" Fill="#00E676" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="HeaderServerTitle" Text="Выберите сервер" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="9,3" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="HeaderServerHostBadge" Text="localhost" FontSize="12" Foreground="{DynamicResource AccentBrightBrush}" FontFamily="Consolas"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock x:Name="HeaderServerSubInfo" Text="Подключение через WinRM / SMB..." FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="21,4,0,0"/>
+                        </StackPanel>
+
+                        <!-- Server Top Action Buttons -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource SecondaryButton}" Click="OpenServerInExplorer_Click" Margin="0,0,8,0" ToolTip="Открыть корень сервера \\server в Проводнике Windows">
+                                <TextBlock Text="📂 Открыть \\сервер"/>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButton}" Click="EditCurrentServer_Click" Margin="0,0,8,0" ToolTip="Изменить описание или удалить сервер из списка">
+                                <TextBlock Text="🖥 Сервер"/>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButton}" Click="RefreshCurrentServer_Click" ToolTip="Обновить список шар, сессий и открытых файлов">
+                                <TextBlock Text="↻ Обновить"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Navigation Tabs & Error Banner -->
+                <StackPanel Grid.Row="1" Background="#88060D09">
+                    <!-- Connection Error Banner -->
+                    <Border x:Name="ConnectionErrorBanner"
+                            Visibility="Collapsed"
+                            Background="#332A0E13"
+                            BorderBrush="#7F1D1D"
+                            BorderThickness="0,0,0,1"
+                            Padding="24,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Не удалось подключиться к серверу по WinRM / PowerShell" FontWeight="SemiBold" Foreground="#FCA5A5" FontSize="13.5"/>
+                                <TextBlock x:Name="ConnectionErrorText" Text="..." Foreground="#F87171" FontSize="12" TextWrapping="Wrap" Margin="0,3,12,0"/>
+                                <TextBlock Text="Подсказка: убедитесь, что сервер доступен в сети, у вашей доменной учетной записи есть права Администратора на этом сервере, и на сервере включен WinRM (Enable-PSRemoting -Force)."
+                                           Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11.5" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" VerticalAlignment="Center" Click="RefreshCurrentServer_Click">
+                                <TextBlock Text="Повторить"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Main Section Tabs + Create Share Button -->
+                    <Border BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="24,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Tab Buttons -->
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="TabSharesButton" Style="{StaticResource PrimaryButton}" Click="SwitchTab_Shares_Click" Margin="0,0,8,0" Padding="14,7">
+                                    <TextBlock x:Name="TabSharesText" Text="📁 Сетевые шары (0)"/>
+                                </Button>
+                                <Button x:Name="TabSessionsButton" Style="{StaticResource SecondaryButton}" Click="SwitchTab_Sessions_Click" Margin="0,0,8,0" Padding="14,7">
+                                    <TextBlock x:Name="TabSessionsText" Text="👥 Активные сессии (0)"/>
+                                </Button>
+                                <Button x:Name="TabFilesButton" Style="{StaticResource SecondaryButton}" Click="SwitchTab_Files_Click" Margin="0,0,8,0" Padding="14,7">
+                                    <TextBlock x:Name="TabFilesText" Text="📄 Открытые файлы (0)"/>
+                                </Button>
+                                <Button x:Name="TabSettingsButton" Style="{StaticResource SecondaryButton}" Click="SwitchTab_Settings_Click" Padding="14,7">
+                                    <TextBlock Text="⚙ Настройки"/>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Right Toolbar: Create Share Button -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Style="{StaticResource PrimaryButton}" Click="OpenCreateShareModal_Click" Padding="16,8">
+                                    <TextBlock Text="+ Создать новую шару" FontWeight="Bold"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- ==================== MAIN TAB CONTENTS ==================== -->
+                <Grid Grid.Row="2">
+
+                    <!-- TAB 1: SHARES WORKSPACE (Glass Cards List + Right Inspector) -->
+                    <Grid x:Name="SharesWorkspaceView" Visibility="Visible">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.25*"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Column: Filter Bar + Shares List -->
+                        <Grid Grid.Column="0" Margin="24,16,12,16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Search & Show System Shares Toggle -->
+                            <Grid Grid.Row="0" Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Search Input -->
+                                <Grid Grid.Column="0" Margin="0,0,14,0">
+                                    <TextBox x:Name="ShareSearchBox"
+                                             Style="{StaticResource ModernTextBox}"
+                                             TextChanged="ShareSearchBox_TextChanged"/>
+                                    <TextBlock Text="🔍 Поиск по имени шары, пути на диске или описанию..."
+                                               Foreground="{DynamicResource TextMutedBrush}"
+                                               FontSize="13"
+                                               Margin="12,0,0,0"
+                                               VerticalAlignment="Center"
+                                               IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text, ElementName=ShareSearchBox}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+
+                                <CheckBox x:Name="ShowSystemSharesToggle"
+                                          Grid.Column="1"
+                                          Style="{StaticResource ToggleSwitchStyle}"
+                                          Content="Системные шары (C$, ADMIN$)"
+                                          VerticalAlignment="Center"
+                                          Checked="ShowSystemSharesToggle_Changed"
+                                          Unchecked="ShowSystemSharesToggle_Changed"/>
+                            </Grid>
+
+                            <!-- Shares ListBox -->
+                            <Grid Grid.Row="1">
+                                <ListBox x:Name="SharesListBox"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         SelectionChanged="SharesListBox_SelectionChanged"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="Margin" Value="0,0,0,10"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Cursor" Value="Hand"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="card"
+                                                                Background="{DynamicResource BgCardBrush}"
+                                                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="12"
+                                                                Padding="16,14">
+                                                            <ContentPresenter/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="card" Property="Background" Value="{DynamicResource BgCardHoverBrush}"/>
+                                                                <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource BorderHoverBrush}"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsSelected" Value="True">
+                                                                <Setter TargetName="card" Property="Background" Value="{DynamicResource BgCardSelectedBrush}"/>
+                                                                <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource AccentBrightBrush}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <!-- Row 1: Share Name, Badges, Active Connections -->
+                                                <Grid Grid.Row="0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <WrapPanel Grid.Column="0" VerticalAlignment="Center">
+                                                        <TextBlock Text="📁" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                                                        <!-- System Badge -->
+                                                        <Border Background="#2D2315" BorderBrush="#78350F" BorderThickness="1" CornerRadius="5" Padding="6,2" Margin="0,0,6,0"
+                                                                Visibility="{Binding IsSystemOrAdmin, Converter={StaticResource BoolToVis}}">
+                                                            <TextBlock Text="Системная" FontSize="11" Foreground="#FBBF24"/>
+                                                        </Border>
+
+                                                        <!-- Hidden ($) Badge -->
+                                                        <Border Background="#11221A" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="6,2" Margin="0,0,6,0"
+                                                                Visibility="{Binding IsHidden, Converter={StaticResource BoolToVis}}">
+                                                            <TextBlock Text="Скрытая ($)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                        </Border>
+
+                                                        <!-- ABE Badge -->
+                                                        <Border Background="#0D2E1E" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="5" Padding="6,2" Margin="0,0,6,0"
+                                                                Visibility="{Binding IsAbeEnabled, Converter={StaticResource BoolToVis}}"
+                                                                ToolTip="Access-Based Enumeration включен (пользователи видят только доступные им папки)">
+                                                            <TextBlock Text="ABE Вкл" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrightBrush}"/>
+                                                        </Border>
+                                                    </WrapPanel>
+
+                                                    <!-- Connected Users Count -->
+                                                    <Border Grid.Column="1" Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" VerticalAlignment="Center">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="👥 " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                            <TextBlock Text="{Binding CurrentUsers}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrightBrush}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Grid>
+
+                                                <!-- Row 2: Folder Path & Description -->
+                                                <StackPanel Grid.Row="1" Margin="0,8,0,8">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="Диск сервера: " FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Path}" FontSize="12.5" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,3,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="UNC-путь:      " FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding UncPath}" FontSize="12.5" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Description}"
+                                                               FontSize="12.5"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                                               Margin="0,5,0,0"
+                                                               Visibility="{Binding Description, Converter={StaticResource NullToVis}}"
+                                                               TextWrapping="Wrap"/>
+                                                </StackPanel>
+
+                                                <!-- Row 3: Quick Actions on Card -->
+                                                <Grid Grid.Row="2" Margin="0,2,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                        <Button Style="{StaticResource SecondaryButton}" Padding="9,5" FontSize="12" Margin="0,0,6,0"
+                                                                Tag="{Binding}" Click="CopyUncPath_Click" ToolTip="Скопировать сетевой путь \\server\share">
+                                                            <TextBlock Text="📋 Копировать путь"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource SecondaryButton}" Padding="9,5" FontSize="12"
+                                                                Tag="{Binding}" Click="OpenShareInExplorer_Click" ToolTip="Открыть шару в Проводнике Windows">
+                                                            <TextBlock Text="📂 Открыть"/>
+                                                        </Button>
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <Button Style="{StaticResource PrimaryButton}" Padding="11,5" FontSize="12" Margin="0,0,6,0"
+                                                                Tag="{Binding}" Click="EditShareCard_Click">
+                                                            <TextBlock Text="⚙ Права и настройки"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource DangerButton}" Padding="10,5" FontSize="12"
+                                                                Tag="{Binding}" Click="DeleteShareCard_Click"
+                                                                ToolTip="Прекратить общий доступ к папке (файлы на диске не удаляются)">
+                                                            <TextBlock Text="Удалить"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <!-- Empty State when no custom shares or search matches -->
+                                <Border x:Name="EmptySharesStatePanel"
+                                        Visibility="Collapsed"
+                                        Background="{DynamicResource BgCardBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="14"
+                                        Padding="28"
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Center"
+                                        MaxWidth="440">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <Image Source="Assets/monkey.png" Width="56" Height="56"
+                                               RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                               HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                        <TextBlock x:Name="EmptySharesTitleText" Text="Пользовательских шар пока нет" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                        <TextBlock x:Name="EmptySharesSubText" Text="На этом сервере сейчас активны только системные шары (C$, ADMIN$, IPC$). Вы можете включить их отображение или создать новую шару."
+                                                   FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,16"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Button x:Name="ShowSystemSharesQuickBtn" Style="{StaticResource SecondaryButton}" Click="EnableShowSystemShares_Click" Margin="0,0,8,0">
+                                                <TextBlock Text="Показать системные ($)"/>
+                                            </Button>
+                                            <Button Style="{StaticResource PrimaryButton}" Click="OpenCreateShareModal_Click">
+                                                <TextBlock Text="+ Создать шару"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Right Column: Live Share Permissions & NTFS Glass Inspector -->
+                        <Border Grid.Column="1"
+                                Margin="12,16,24,16"
+                                Background="{DynamicResource BgCardBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="20">
+                            <Grid>
+                                <!-- Placeholder when no share is selected -->
+                                <StackPanel x:Name="InspectorEmptyState" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <TextBlock Text="🔐" FontSize="40" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Выберите шару в списке слева" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Здесь отобразятся права доступа к шаре (SMB) и права безопасности папки на диске (NTFS ACL)"
+                                               FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="320" Margin="0,6,0,0"/>
+                                </StackPanel>
+
+                                <!-- Active Share Inspector Content -->
+                                <ScrollViewer x:Name="InspectorContentScroll" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <!-- Inspector Header -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock x:Name="InspShareName" Text="ShareName" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                <TextBlock x:Name="InspShareUnc" Text="\\server\share" FontSize="12.5" FontFamily="Consolas" Foreground="{DynamicResource AccentBrightBrush}" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Click="OpenSelectedShareEditor_Click" VerticalAlignment="Top">
+                                                <TextBlock Text="✎ Редактировать все"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <!-- Metadata Summary Box -->
+                                        <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,14,0,16">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                                                    <TextBlock Text="Путь на сервере" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                    <TextBlock x:Name="InspLocalPath" Text="C:\Shares" FontSize="12.5" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,8">
+                                                    <TextBlock Text="Access-Based Enumeration" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                    <TextBlock x:Name="InspAbeStatus" Text="Включен" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
+                                                    <TextBlock Text="Режим кэширования" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                    <TextBlock x:Name="InspCachingMode" Text="Manual" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
+                                                    <TextBlock Text="Владелец папки (NTFS)" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                    <TextBlock x:Name="InspNtfsOwner" Text="..." FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Section 1: SMB Share Permissions -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="ПРАВА ДОСТУПА К ШАРЕ (SMB PERMISSIONS)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Padding="10,4" FontSize="11.5" Click="OpenSelectedShareSmbTab_Click">
+                                                <TextBlock Text="+ Изменить права SMB"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <ItemsControl x:Name="InspSmbPermissionsList" Margin="0,0,0,18">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,6">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding AccountName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding AccessControlTypeDisplay}" FontSize="12"
+                                                                       Foreground="{Binding AccessControlType, Converter={StaticResource AccessTypeToBrush}}"
+                                                                       Margin="10,0" VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="2" Background="{DynamicResource AccentSubtleBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="8,3">
+                                                                <TextBlock Text="{Binding AccessRightDisplay}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Section 2: NTFS Folder Permissions -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="ПРАВА БЕЗОПАСНОСТИ ПАПКИ (NTFS ACL)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                <Border x:Name="InspInheritanceBadge" Background="{DynamicResource AccentSubtleBrush}" CornerRadius="4" Padding="6,2" Margin="8,0,0,0">
+                                                    <TextBlock x:Name="InspInheritanceText" Text="Наследование вкл" FontSize="10.5" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Padding="10,4" FontSize="11.5" Click="OpenSelectedShareNtfsTab_Click">
+                                                <TextBlock Text="+ Изменить права NTFS"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <TextBlock x:Name="InspNtfsStatusText" Text="" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Visibility="Collapsed" Margin="0,4,0,8"/>
+
+                                        <ItemsControl x:Name="InspNtfsPermissionsList">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,6">
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                            </Grid.RowDefinitions>
+                                                            <Grid Grid.Row="0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{Binding IdentityReference}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Grid.Column="1" Text="{Binding RightsDisplay}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                            </Grid>
+                                                            <Grid Grid.Row="1" Margin="0,4,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{Binding ScopeDisplay}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                                    <TextBlock Text="{Binding AccessTypeDisplay}" FontSize="11"
+                                                                               Foreground="{Binding AccessControlType, Converter={StaticResource AccessTypeToBrush}}"
+                                                                               Margin="0,0,8,0"/>
+                                                                    <TextBlock Text="{Binding SourceDisplay}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- TAB 2: ACTIVE SMB SESSIONS -->
+                    <Grid x:Name="SessionsWorkspaceView" Visibility="Collapsed" Margin="24,16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="380"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid Grid.Column="0">
+                                <TextBox x:Name="SessionSearchBox" Style="{StaticResource ModernTextBox}" TextChanged="SessionSearchBox_TextChanged"/>
+                                <TextBlock Text="🔍 Фильтр по пользователю или IP/имени компьютера..."
+                                           Foreground="{DynamicResource TextMutedBrush}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=SessionSearchBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Click="RefreshSessions_Click">
+                                <TextBlock Text="↻ Обновить сессии"/>
+                            </Button>
+                        </Grid>
+
+                        <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="14">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Table Header -->
+                                <Border Grid.Row="0" Background="{DynamicResource BgInputBrush}" CornerRadius="8" Padding="14,10" Margin="0,0,0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.6*"/>
+                                            <ColumnDefinition Width="1.4*"/>
+                                            <ColumnDefinition Width="0.8*"/>
+                                            <ColumnDefinition Width="0.9*"/>
+                                            <ColumnDefinition Width="0.9*"/>
+                                            <ColumnDefinition Width="0.8*"/>
+                                            <ColumnDefinition Width="140"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="ПОЛЬЗОВАТЕЛЬ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="КЛИЕНТ (IP / ХОСТ)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="2" Text="ОТКРЫТО ФАЙЛОВ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="3" Text="ВРЕМЯ СЕССИИ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="4" Text="ПРОСТОЙ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="5" Text="SMB ДИАЛЕКТ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="6" Text="ДЕЙСТВИЕ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl x:Name="SessionsItemsControl">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,6">
+                                                    <Grid VerticalAlignment="Center">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1.6*"/>
+                                                            <ColumnDefinition Width="1.4*"/>
+                                                            <ColumnDefinition Width="0.8*"/>
+                                                            <ColumnDefinition Width="0.9*"/>
+                                                            <ColumnDefinition Width="0.9*"/>
+                                                            <ColumnDefinition Width="0.8*"/>
+                                                            <ColumnDefinition Width="140"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding ClientUserName}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding ClientComputerName}" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding NumOpens}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="3" Text="{Binding DurationDisplay}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="4" Text="{Binding IdleDisplay}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="5" Text="{Binding Dialect}" FontFamily="Consolas" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="6" Style="{StaticResource DangerButton}" HorizontalAlignment="Right"
+                                                                Tag="{Binding}" Click="DisconnectSession_Click">
+                                                            <TextBlock Text="Сбросить сессию"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- TAB 3: OPEN SMB FILES -->
+                    <Grid x:Name="FilesWorkspaceView" Visibility="Collapsed" Margin="24,16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="420"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid Grid.Column="0">
+                                <TextBox x:Name="OpenFileSearchBox" Style="{StaticResource ModernTextBox}" TextChanged="OpenFileSearchBox_TextChanged"/>
+                                <TextBlock Text="🔍 Поиск по имени открытого файла, пути или пользователю..."
+                                           Foreground="{DynamicResource TextMutedBrush}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=OpenFileSearchBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Click="RefreshOpenFiles_Click">
+                                <TextBlock Text="↻ Обновить открытые файлы"/>
+                            </Button>
+                        </Grid>
+
+                        <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="14">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Background="{DynamicResource BgInputBrush}" CornerRadius="8" Padding="14,10" Margin="0,0,0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2.5*"/>
+                                            <ColumnDefinition Width="1.3*"/>
+                                            <ColumnDefinition Width="1.1*"/>
+                                            <ColumnDefinition Width="0.6*"/>
+                                            <ColumnDefinition Width="150"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="ПУТЬ К ОТКРЫТОМУ ФАЙЛУ НА СЕРВЕРЕ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="ПОЛЬЗОВАТЕЛЬ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="2" Text="КЛИЕНТ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="3" Text="БЛОКИРОВКИ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Grid.Column="4" Text="ДЕЙСТВИЕ" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl x:Name="OpenFilesItemsControl">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,6">
+                                                    <Grid VerticalAlignment="Center">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="2.5*"/>
+                                                            <ColumnDefinition Width="1.3*"/>
+                                                            <ColumnDefinition Width="1.1*"/>
+                                                            <ColumnDefinition Width="0.6*"/>
+                                                            <ColumnDefinition Width="150"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Path}" FontFamily="Consolas" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding ClientUserName}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding ClientComputerName}" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="3" Text="{Binding Locks}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="4" Style="{StaticResource DangerButton}" HorizontalAlignment="Right"
+                                                                Tag="{Binding}" Click="CloseOpenFile_Click">
+                                                            <TextBlock Text="Закрыть файл"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- TAB 4: SETTINGS & CRAZY MONKEYS HUB -->
+                    <ScrollViewer x:Name="SettingsWorkspaceView" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" Padding="24,18">
+                        <Grid MaxWidth="1060" HorizontalAlignment="Left">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.15*"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Left Settings Column -->
+                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+
+                                <!-- Card 1: Theme & Glassmorphism -->
+                                <Border Background="{DynamicResource BgCardBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="14"
+                                        Padding="22,18"
+                                        Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Text="🎨 Тема оформления и Glass-эффекты" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="Настройте фирменный зелено-черный стиль Folders и прозрачность стеклянных панелей"
+                                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,14"/>
+
+                                        <TextBlock Text="Цветовая палитра интерфейса" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                        <ComboBox x:Name="SettingsThemeCombo" Style="{StaticResource ModernComboBox}" SelectionChanged="SettingsThemeCombo_SelectionChanged">
+                                            <ComboBoxItem Content="🟢 Cyber Emerald — Зелено-черный Glass (Crazy Monkeys)" Tag="CyberEmerald"/>
+                                            <ComboBoxItem Content="⚡ Neon Matrix — Яркий неон на глубоком черном" Tag="NeonMatrix"/>
+                                            <ComboBoxItem Content="🌿 Obsidian Mint — Спокойный мятный графит" Tag="ObsidianMint"/>
+                                            <ComboBoxItem Content="💠 Cyber Blue — Кибер-синий лед" Tag="CyberBlue"/>
+                                        </ComboBox>
+
+                                        <CheckBox x:Name="SettingsGlassToggle"
+                                                  Style="{StaticResource ToggleSwitchStyle}"
+                                                  Content="Включить фоновое неоновое свечение и эффект матового стекла (Glass)"
+                                                  Margin="0,14,0,0"
+                                                  Checked="SettingsGlassToggle_Changed"
+                                                  Unchecked="SettingsGlassToggle_Changed"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Card 2: Default Share Creation Settings -->
+                                <Border Background="{DynamicResource BgCardBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="14"
+                                        Padding="22,18"
+                                        Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Text="📁 Параметры создания шар по умолчанию" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="Применяются автоматически при открытии окна создания новой сетевой папки"
+                                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,14"/>
+
+                                        <TextBlock Text="Базовый путь на диске сервера для новых шар" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                        <TextBox x:Name="SettingsDefaultPathBox" Style="{StaticResource ModernTextBox}" FontFamily="Consolas" TextChanged="SettingsInputs_Changed"/>
+
+                                        <CheckBox x:Name="SettingsDefaultAbeToggle"
+                                                  Style="{StaticResource ToggleSwitchStyle}"
+                                                  Content="Включать Access-Based Enumeration (ABE) по умолчанию"
+                                                  Margin="0,14,0,0"
+                                                  Checked="SettingsInputs_Changed"
+                                                  Unchecked="SettingsInputs_Changed"/>
+
+                                        <CheckBox x:Name="SettingsDefaultCreateDirToggle"
+                                                  Style="{StaticResource ToggleSwitchStyle}"
+                                                  Content="Автоматически создавать папку на сервере, если она не существует"
+                                                  Margin="0,12,0,0"
+                                                  Checked="SettingsInputs_Changed"
+                                                  Unchecked="SettingsInputs_Changed"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Right Settings Column -->
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+
+                                <!-- Card 3: WinRM, Auto-Refresh & Safety -->
+                                <Border Background="{DynamicResource BgCardBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="14"
+                                        Padding="22,18"
+                                        Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Text="⚡ Сеть, WinRM и Автообновление" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="Управление пулом сессий PowerShell Remoting и опросом серверов"
+                                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,14"/>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                <TextBlock Text="Фоновое автообновление" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                                <ComboBox x:Name="SettingsAutoRefreshCombo" Style="{StaticResource ModernComboBox}" SelectionChanged="SettingsAutoRefreshCombo_SelectionChanged">
+                                                    <ComboBoxItem Content="Выключено (вручную)" Tag="0"/>
+                                                    <ComboBoxItem Content="Каждые 30 секунд" Tag="30"/>
+                                                    <ComboBoxItem Content="Каждую 1 минуту" Tag="60"/>
+                                                    <ComboBoxItem Content="Каждые 5 минут" Tag="300"/>
+                                                </ComboBox>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                                <TextBlock Text="Таймаут команд WinRM" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                                <ComboBox x:Name="SettingsTimeoutCombo" Style="{StaticResource ModernComboBox}" SelectionChanged="SettingsTimeoutCombo_SelectionChanged">
+                                                    <ComboBoxItem Content="15 секунд (быстрый)" Tag="15"/>
+                                                    <ComboBoxItem Content="25 секунд (стандарт)" Tag="25"/>
+                                                    <ComboBoxItem Content="60 секунд (медленная сеть)" Tag="60"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <CheckBox x:Name="SettingsConfirmDangerToggle"
+                                                  Style="{StaticResource ToggleSwitchStyle}"
+                                                  Content="Запрашивать подтверждение перед удалением шары или сбросом сессии"
+                                                  Margin="0,14,0,14"
+                                                  Checked="SettingsInputs_Changed"
+                                                  Unchecked="SettingsInputs_Changed"/>
+
+                                        <WrapPanel Orientation="Horizontal">
+                                            <Button Style="{StaticResource SecondaryButton}" Click="ResetWinRmPool_Click" Margin="0,0,8,8">
+                                                <TextBlock Text="🔄 Перезапустить пул WinRM"/>
+                                            </Button>
+                                            <Button Style="{StaticResource SecondaryButton}" Click="OpenConfigFolder_Click" Margin="0,0,8,8">
+                                                <TextBlock Text="📂 Папка конфига"/>
+                                            </Button>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Card 4: Crazy Monkeys Studio Signature Card -->
+                                <Border Background="{DynamicResource BgCardSelectedBrush}"
+                                        BorderBrush="{DynamicResource AccentBrightBrush}"
+                                        BorderThickness="1.5"
+                                        CornerRadius="14"
+                                        Padding="22,20">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" Width="76" Height="76" CornerRadius="16"
+                                                Background="#0A1A12"
+                                                BorderBrush="{DynamicResource AccentBrightBrush}"
+                                                BorderThickness="2"
+                                                Padding="6"
+                                                Margin="0,0,18,0"
+                                                VerticalAlignment="Center">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="#00FF66" BlurRadius="18" ShadowDepth="0" Opacity="0.45"/>
+                                            </Border.Effect>
+                                            <Image Source="Assets/monkey.png"
+                                                   RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                                   Stretch="Uniform"/>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="Folders" FontSize="20" FontWeight="ExtraBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                <Border Background="{DynamicResource AccentBrush}" CornerRadius="5" Padding="7,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="v2.0 GLASS" FontSize="10.5" FontWeight="ExtraBold" Foreground="#03140B"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="Сделано командой Crazy Monkeys" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentBrightBrush}" Margin="0,4,0,0"/>
+                                            <TextBlock Text="Современный центр управления сетевыми шарами SMB, правами безопасности NTFS, активными сессиями и ресурсами домена Windows Server."
+                                                       FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                            </StackPanel>
+                        </Grid>
+                    </ScrollViewer>
+
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- ==================== MODAL 1: SHARE CREATE / EDIT & PERMISSIONS (SMB + NTFS) ==================== -->
+        <Grid x:Name="ShareEditorModalOverlay" Background="#C8030705" Visibility="Collapsed">
+            <Border Width="940" MaxHeight="800"
+                    Background="{DynamicResource BgModalBrush}"
+                    BorderBrush="{DynamicResource BorderHoverBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="16"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="26,22">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Modal Header -->
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock x:Name="ShareModalTitle" Text="Создание новой сетевой шары" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock x:Name="ShareModalSubtitle" Text="Настройте папку, параметры общего доступа SMB и права NTFS" FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Click="CloseShareEditorModal_Click" Padding="10,6">
+                            <TextBlock Text="✕ Закрыть"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Modal Sub-Tabs -->
+                    <Border Grid.Row="1" Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="5" Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="ModalTabGeneralBtn" Grid.Column="0" Style="{StaticResource PrimaryButton}" Click="ModalTabGeneral_Click" Margin="0,0,4,0">
+                                <TextBlock Text="1. Основные параметры и папка"/>
+                            </Button>
+                            <Button x:Name="ModalTabSmbBtn" Grid.Column="1" Style="{StaticResource SecondaryButton}" Click="ModalTabSmb_Click" Margin="2,0">
+                                <TextBlock Text="2. Права доступа к шаре (SMB)"/>
+                            </Button>
+                            <Button x:Name="ModalTabNtfsBtn" Grid.Column="2" Style="{StaticResource SecondaryButton}" Click="ModalTabNtfs_Click" Margin="4,0,0,0">
+                                <TextBlock Text="3. Права безопасности папки (NTFS)"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Modal Sub-Tab Content Area -->
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
+                        <Grid>
+                            <!-- SUB-TAB 1: GENERAL SETTINGS -->
+                            <StackPanel x:Name="ModalGeneralPanel" Visibility="Visible">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.2*"/>
+                                        <ColumnDefinition Width="1*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                        <TextBlock Text="Имя сетевой шары *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                        <TextBox x:Name="EditShareNameBox" Style="{StaticResource ModernTextBox}" TextChanged="EditShareNameBox_TextChanged"/>
+                                        <TextBlock Text="Совет: добавьте символ $ в конце (например, Accounting$), чтобы сделать шару скрытой в сетевом окружении."
+                                                   FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                        <TextBlock Text="Итоговый UNC-путь для пользователей" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                        <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                                            <TextBlock x:Name="EditShareUncPreview" Text="\\server\share" FontFamily="Consolas" FontSize="13.5" Foreground="{DynamicResource AccentBrightBrush}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Folder Path on Server + Visual Explorer Button -->
+                                <TextBlock Text="Путь к папке на диске сервера *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,16,0,6"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="EditSharePathBox" Grid.Column="0" Style="{StaticResource ModernTextBox}" FontFamily="Consolas" Margin="0,0,10,0"/>
+                                    <Button x:Name="BrowseServerFolderBtn" Grid.Column="1" Style="{StaticResource PrimaryButton}" Click="OpenRemoteFolderBrowser_Click">
+                                        <TextBlock Text="📂 Обзор дисков сервера..."/>
+                                    </Button>
+                                </Grid>
+
+                                <CheckBox x:Name="CreateFolderIfMissingCheck"
+                                          Style="{StaticResource ToggleSwitchStyle}"
+                                          Content="Автоматически создать папку на сервере, если она еще не существует"
+                                          IsChecked="True"
+                                          Margin="0,10,0,0"/>
+
+                                <!-- Description -->
+                                <TextBlock Text="Описание (комментарий)" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,16,0,6"/>
+                                <TextBox x:Name="EditShareDescBox" Style="{StaticResource ModernTextBox}"/>
+
+                                <!-- ABE, Caching, User Limit -->
+                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,18,0,0">
+                                    <StackPanel>
+                                        <CheckBox x:Name="EditShareAbeCheck"
+                                                  Style="{StaticResource ToggleSwitchStyle}"
+                                                  Content="Включить Access-Based Enumeration (ABE) — скрывать файлы и папки, к которым у пользователя нет NTFS-доступа"
+                                                  IsChecked="True"/>
+
+                                        <Grid Margin="0,16,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                                <TextBlock Text="Режим автономного кэширования (CSC)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                                <ComboBox x:Name="EditShareCachingCombo" Style="{StaticResource ModernComboBox}" SelectedIndex="0">
+                                                    <ComboBoxItem Content="Manual" Tag="Manual"/>
+                                                    <ComboBoxItem Content="Documents" Tag="Documents"/>
+                                                    <ComboBoxItem Content="Programs" Tag="Programs"/>
+                                                    <ComboBoxItem Content="BranchCache" Tag="BranchCache"/>
+                                                    <ComboBoxItem Content="None" Tag="None"/>
+                                                </ComboBox>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                <TextBlock Text="Лимит одновременных подключений (0 = без лимита)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                                <TextBox x:Name="EditShareLimitBox" Style="{StaticResource ModernTextBox}" Text="0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- SUB-TAB 2: SMB SHARE PERMISSIONS -->
+                            <StackPanel x:Name="ModalSmbPanel" Visibility="Collapsed">
+                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="Добавить пользователя или группу в права шары (SMB)" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="2*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="1.1*"/>
+                                                <ColumnDefinition Width="0.9*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBox x:Name="SmbNewAccountBox" Grid.Column="0" Style="{StaticResource ModernTextBox}" Margin="0,0,8,0"
+                                                     ToolTip="Например: DOMAIN\ivanov, BUILTIN\Administrators или Все"/>
+                                            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Click="OpenPrincipalPickerForSmb_Click" Margin="0,0,8,0">
+                                                <TextBlock Text="🔍 Найти в AD / Сервере"/>
+                                            </Button>
+
+                                            <ComboBox x:Name="SmbNewRightCombo" Grid.Column="2" Style="{StaticResource ModernComboBox}" SelectedIndex="1" Margin="0,0,8,0">
+                                                <ComboBoxItem Content="Чтение (Read)" Tag="Read"/>
+                                                <ComboBoxItem Content="Изменение (Change)" Tag="Change"/>
+                                                <ComboBoxItem Content="Полный доступ (Full)" Tag="Full"/>
+                                            </ComboBox>
+
+                                            <ComboBox x:Name="SmbNewTypeCombo" Grid.Column="3" Style="{StaticResource ModernComboBox}" SelectedIndex="0" Margin="0,0,8,0">
+                                                <ComboBoxItem Content="Разрешить" Tag="Allow"/>
+                                                <ComboBoxItem Content="Запретить" Tag="Deny"/>
+                                            </ComboBox>
+
+                                            <Button Grid.Column="4" Style="{StaticResource PrimaryButton}" Click="AddSmbPermission_Click">
+                                                <TextBlock Text="+ Выдать право"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <!-- Quick Presets -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                            <TextBlock Text="Быстрые шаблоны:" FontSize="11.5" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <Button Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11.5" Margin="0,0,6,0" Click="QuickAddEveryoneRead_Click">
+                                                <TextBlock Text="+ Все (Чтение)"/>
+                                            </Button>
+                                            <Button Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11.5" Margin="0,0,6,0" Click="QuickAddEveryoneFull_Click">
+                                                <TextBlock Text="+ Все (Полный доступ)"/>
+                                            </Button>
+                                            <Button Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11.5" Click="QuickAddAdminsFull_Click">
+                                                <TextBlock Text="+ Администраторы (Полный доступ)"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="ТЕКУЩИЕ ПРАВА НА ШАРУ (SMB ACCESS LIST)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,8"/>
+
+                                <ItemsControl x:Name="ModalSmbPermissionsList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,8">
+                                                <Grid VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding AccountName}" FontWeight="SemiBold" FontSize="13.5" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                    </StackPanel>
+
+                                                    <TextBlock Grid.Column="1" Text="{Binding AccessControlTypeDisplay}" FontSize="12.5" FontWeight="SemiBold"
+                                                               Foreground="{Binding AccessControlType, Converter={StaticResource AccessTypeToBrush}}"
+                                                               VerticalAlignment="Center" Margin="12,0"/>
+
+                                                    <Border Grid.Column="2" Background="{DynamicResource AccentSubtleBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="10,4" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                        <TextBlock Text="{Binding AccessRightDisplay}" FontSize="12.5" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                    </Border>
+
+                                                    <Button Grid.Column="3" Style="{StaticResource DangerButton}" Tag="{Binding}" Click="RemoveSmbPermission_Click">
+                                                        <TextBlock Text="Удалить"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- SUB-TAB 3: NTFS SECURITY / ACL -->
+                            <StackPanel x:Name="ModalNtfsPanel" Visibility="Collapsed">
+                                <!-- Folder & Inheritance Header -->
+                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock x:Name="ModalNtfsFolderText" Text="Папка: ..." FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" FontFamily="Consolas"/>
+                                            <TextBlock x:Name="ModalNtfsOwnerText" Text="Владелец: ..." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                                            <TextBlock x:Name="ModalNtfsInheritanceStatus" Text="Наследование прав от родительской папки: Включено" FontSize="12" Foreground="#34D399" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button x:Name="ToggleNtfsInheritanceBtn" Style="{StaticResource SecondaryButton}" Click="ToggleNtfsInheritance_Click" Margin="0,0,8,0">
+                                                <TextBlock x:Name="ToggleNtfsInheritanceBtnText" Text="Отключить наследование"/>
+                                            </Button>
+                                            <Button Style="{StaticResource SecondaryButton}" Click="ReloadModalNtfs_Click">
+                                                <TextBlock Text="↻ Обновить ACL"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Add NTFS Rule Form -->
+                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="Добавить или изменить правило безопасности NTFS на папку" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="NtfsNewAccountBox" Grid.Column="0" Style="{StaticResource ModernTextBox}" Margin="0,0,8,0"
+                                                     ToolTip="Учетная запись или группа (например DOMAIN\GroupName)"/>
+                                            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Click="OpenPrincipalPickerForNtfs_Click">
+                                                <TextBlock Text="🔍 Найти пользователя или группу в AD / на сервере..."/>
+                                            </Button>
+                                        </Grid>
+
+                                        <Grid Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1.3*"/>
+                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <ComboBox x:Name="NtfsNewRightsCombo" Grid.Column="0" Style="{StaticResource ModernComboBox}" SelectedIndex="1" Margin="0,0,8,0">
+                                                <ComboBoxItem Content="Чтение и выполнение (ReadAndExecute)" Tag="ReadAndExecute"/>
+                                                <ComboBoxItem Content="Изменение (Modify)" Tag="Modify"/>
+                                                <ComboBoxItem Content="Полный доступ (FullControl)" Tag="FullControl"/>
+                                                <ComboBoxItem Content="Только чтение (Read)" Tag="Read"/>
+                                                <ComboBoxItem Content="Только запись (Write)" Tag="Write"/>
+                                            </ComboBox>
+
+                                            <ComboBox x:Name="NtfsNewScopeCombo" Grid.Column="1" Style="{StaticResource ModernComboBox}" SelectedIndex="0" Margin="0,0,8,0">
+                                                <ComboBoxItem Content="Эта папка, подпапки и файлы" Tag="ThisFolderSubfoldersAndFiles"/>
+                                                <ComboBoxItem Content="Только эта папка" Tag="ThisFolderOnly"/>
+                                                <ComboBoxItem Content="Только подпапки и файлы" Tag="SubfoldersAndFilesOnly"/>
+                                                <ComboBoxItem Content="Эта папка и подпапки" Tag="ThisFolderAndSubfolders"/>
+                                                <ComboBoxItem Content="Эта папка и файлы" Tag="ThisFolderAndFiles"/>
+                                            </ComboBox>
+
+                                            <ComboBox x:Name="NtfsNewTypeCombo" Grid.Column="2" Style="{StaticResource ModernComboBox}" SelectedIndex="0" Margin="0,0,8,0">
+                                                <ComboBoxItem Content="Разрешить" Tag="Allow"/>
+                                                <ComboBoxItem Content="Запретить" Tag="Deny"/>
+                                            </ComboBox>
+
+                                            <Button Grid.Column="3" Style="{StaticResource PrimaryButton}" Click="AddNtfsRule_Click">
+                                                <TextBlock Text="+ Применить в NTFS"/>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Existing NTFS Rules List -->
+                                <TextBlock Text="СПИСОК ПРАВИЛ БЕЗОПАСНОСТИ (NTFS ACCESS CONTROL LIST)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,8"/>
+
+                                <ItemsControl x:Name="ModalNtfsRulesList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,6">
+                                                <Grid VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="1.6*"/>
+                                                        <ColumnDefinition Width="1.2*"/>
+                                                        <ColumnDefinition Width="1.3*"/>
+                                                        <ColumnDefinition Width="0.8*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding IdentityReference}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding AccessTypeDisplay}" FontSize="11.5"
+                                                                   Foreground="{Binding AccessControlType, Converter={StaticResource AccessTypeToBrush}}"/>
+                                                    </StackPanel>
+
+                                                    <TextBlock Grid.Column="1" Text="{Binding RightsDisplay}" FontSize="12.5" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" Margin="8,0"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding ScopeDisplay}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0"/>
+                                                    <TextBlock Grid.Column="3" Text="{Binding SourceDisplay}" FontSize="11.5" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+
+                                                    <Button Grid.Column="4" Style="{StaticResource DangerButton}"
+                                                            Tag="{Binding}" Click="RemoveNtfsRule_Click"
+                                                            Visibility="{Binding IsInherited, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                                            ToolTip="Удалить явное правило NTFS">
+                                                        <TextBlock Text="Удалить"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <!-- Modal Footer -->
+                    <Border Grid.Row="3" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0" Margin="0,14,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="ShareModalStatusHint" Grid.Column="0" Text="" FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Style="{StaticResource SecondaryButton}" Click="CloseShareEditorModal_Click" Margin="0,0,10,0">
+                                    <TextBlock Text="Отмена"/>
+                                </Button>
+                                <Button x:Name="SaveShareModalBtn" Style="{StaticResource PrimaryButton}" Click="SaveShareModal_Click" Padding="20,9">
+                                    <TextBlock x:Name="SaveShareModalBtnText" Text="✓ Создать шару"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================== MODAL 2: REMOTE SERVER DISK & FOLDER EXPLORER ==================== -->
+        <Grid x:Name="FolderBrowserModalOverlay" Background="#CC030705" Visibility="Collapsed">
+            <Border Width="760" Height="640"
+                    Background="{DynamicResource BgModalBrush}"
+                    BorderBrush="{DynamicResource AccentBrightBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="16"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="24,20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Проводник дисков удаленного сервера" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock x:Name="BrowserServerSubtitle" Text="Выберите существующую папку или создайте новую на сервере" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Click="CloseFolderBrowser_Click" Padding="10,5">
+                            <TextBlock Text="✕"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Drives Selector Bar -->
+                    <ItemsControl x:Name="RemoteDrivesItemsControl" Grid.Row="1" Margin="0,0,0,10">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource SecondaryButton}" Margin="0,0,8,6" Padding="12,7"
+                                        Tag="{Binding}" Click="SelectRemoteDrive_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💽 " FontSize="13"/>
+                                        <TextBlock Text="{Binding DisplayTitle}" FontSize="12.5"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Current Path & Up Button -->
+                    <Grid Grid.Row="2" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Style="{StaticResource SecondaryButton}" Click="RemoteFolderUp_Click" Margin="0,0,8,0">
+                            <TextBlock Text="⬆ Вверх"/>
+                        </Button>
+                        <TextBox x:Name="RemoteBrowserCurrentPathBox" Grid.Column="1" Style="{StaticResource ModernTextBox}" FontFamily="Consolas" KeyDown="RemoteBrowserCurrentPathBox_KeyDown"/>
+                        <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Click="RemoteFolderGoToPath_Click" Margin="8,0,0,0">
+                            <TextBlock Text="Перейти"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Subfolders List -->
+                    <Border Grid.Row="3" Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="8">
+                        <ListBox x:Name="RemoteFoldersListBox"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 MouseDoubleClick="RemoteFoldersListBox_MouseDoubleClick"
+                                 SelectionChanged="RemoteFoldersListBox_SelectionChanged">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="10,8"/>
+                                    <Setter Property="Margin" Value="0,0,0,3"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="bd" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="{DynamicResource BgCardHoverBrush}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="{DynamicResource BgCardSelectedBrush}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="📁" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Padding="8,3" FontSize="11"
+                                                Tag="{Binding}" Click="EnterRemoteSubfolder_Click">
+                                            <TextBlock Text="Открыть →"/>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+
+                    <!-- Create New Folder Inline Bar -->
+                    <Border Grid.Row="4" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,10,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Новая папка в текущем каталоге:" FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBox x:Name="NewRemoteFolderNameBox" Grid.Column="1" Style="{StaticResource ModernTextBox}" Margin="0,0,10,0"/>
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Click="CreateNewRemoteFolder_Click">
+                                <TextBlock Text="+ Создать папку"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Footer -->
+                    <Grid Grid.Row="5" Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="RemoteBrowserSelectedPreview" Grid.Column="0" Text="Выбрано: ..." FontFamily="Consolas" FontSize="12.5" Foreground="{DynamicResource AccentBrightBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Style="{StaticResource SecondaryButton}" Click="CloseFolderBrowser_Click" Margin="0,0,8,0">
+                                <TextBlock Text="Отмена"/>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Click="ConfirmRemoteFolderSelection_Click">
+                                <TextBlock Text="✓ Выбрать эту папку"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================== MODAL 3: ACTIVE DIRECTORY & LOCAL PRINCIPAL PICKER ==================== -->
+        <Grid x:Name="PrincipalPickerModalOverlay" Background="#CC030705" Visibility="Collapsed">
+            <Border Width="700" Height="580"
+                    Background="{DynamicResource BgModalBrush}"
+                    BorderBrush="{DynamicResource AccentBrightBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="16"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="24,20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Выбор пользователя или группы (AD и локальные учетки)" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Поиск выполняется в домене Active Directory и среди локальных групп/пользователей сервера" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Click="ClosePrincipalPicker_Click" Padding="10,5">
+                            <TextBlock Text="✕"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Search Input -->
+                    <Grid Grid.Row="1" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="PrincipalSearchQueryBox" Grid.Column="0" Style="{StaticResource ModernTextBox}" Margin="0,0,8,0" KeyDown="PrincipalSearchQueryBox_KeyDown"/>
+                        <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Click="ExecutePrincipalSearch_Click">
+                            <TextBlock Text="🔍 Найти"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Principals List -->
+                    <Border Grid.Row="2" Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="8">
+                        <ListBox x:Name="PrincipalsResultListBox"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 MouseDoubleClick="PrincipalsResultListBox_MouseDoubleClick">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="12,8"/>
+                                    <Setter Property="Margin" Value="0,0,0,4"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="bd" Background="{DynamicResource BgCardBrush}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="{DynamicResource BgCardHoverBrush}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="{DynamicResource BgCardSelectedBrush}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.6*"/>
+                                            <ColumnDefinition Width="1.4*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding AccountName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0"/>
+                                        <Border Grid.Column="2" Background="{DynamicResource AccentSubtleBrush}" CornerRadius="4" Padding="7,2" Margin="0,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding TypeBadge}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="3" Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+
+                    <Grid Grid.Row="3" Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="PrincipalSearchStatusText" Grid.Column="0" Text="Двойной клик или кнопка 'Выбрать' подставит учетную запись" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Style="{StaticResource SecondaryButton}" Click="ClosePrincipalPicker_Click" Margin="0,0,8,0">
+                                <TextBlock Text="Отмена"/>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Click="ConfirmPrincipalSelection_Click">
+                                <TextBlock Text="✓ Выбрать учетную запись"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================== MODAL 4: ADD / EDIT SERVER OR IMPORT FROM AD ==================== -->
+        <Grid x:Name="ServerModalOverlay" Background="#CC030705" Visibility="Collapsed">
+            <Border Width="620" MaxHeight="660"
+                    Background="{DynamicResource BgModalBrush}"
+                    BorderBrush="{DynamicResource BorderHoverBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="16"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="24,20">
+                <Grid>
+                    <!-- Manual Add/Edit Server Panel -->
+                    <StackPanel x:Name="ManualServerPanel" Visibility="Visible">
+                        <TextBlock x:Name="ServerModalTitleText" Text="Добавить сервер Windows" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock Text="Подключение осуществляется по протоколу WinRM (PowerShell Remoting) от имени текущего доменного пользователя"
+                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,16" TextWrapping="Wrap"/>
+
+                        <TextBlock Text="Имя хоста (FQDN), NetBIOS-имя или IP-адрес *" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <TextBox x:Name="ServerHostnameInput" Style="{StaticResource ModernTextBox}" FontFamily="Consolas"/>
+
+                        <TextBlock Text="Отображаемое название (необязательно)" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,14,0,6"/>
+                        <TextBox x:Name="ServerDisplayNameInput" Style="{StaticResource ModernTextBox}"/>
+
+                        <TextBlock Text="Описание / заметка" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,14,0,6"/>
+                        <TextBox x:Name="ServerDescriptionInput" Style="{StaticResource ModernTextBox}"/>
+
+                        <Grid Margin="0,22,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="DeleteServerBtn" Grid.Column="0" Style="{StaticResource DangerButton}" Click="DeleteCurrentServer_Click" Visibility="Collapsed">
+                                <TextBlock Text="Удалить сервер из списка"/>
+                            </Button>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button Style="{StaticResource SecondaryButton}" Click="CloseServerModal_Click" Margin="0,0,8,0">
+                                    <TextBlock Text="Отмена"/>
+                                </Button>
+                                <Button Style="{StaticResource PrimaryButton}" Click="SaveManualServer_Click">
+                                    <TextBlock Text="✓ Сохранить и подключиться"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Active Directory Server Discovery Panel -->
+                    <Grid x:Name="AdDiscoveryPanel" Visibility="Collapsed" Height="520">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                            <TextBlock Text="Импорт серверов из Active Directory" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Найдите компьютеры под управлением Windows Server в вашем домене и отметьте нужные" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0"/>
+                        </StackPanel>
+
+                        <Grid Grid.Row="1" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AdServerFilterBox" Grid.Column="0" Style="{StaticResource ModernTextBox}" Margin="0,0,8,0"/>
+                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Click="SearchAdServers_Click">
+                                <TextBlock Text="🔍 Найти в AD"/>
+                            </Button>
+                        </Grid>
+
+                        <Border Grid.Row="2" Background="{DynamicResource BgInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="10" Padding="10">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="AdDiscoveredServersList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,6">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13.5" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                        <TextBlock Text="{Binding DnsHostName}" FontSize="11.5" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="{Binding OperatingSystem}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+
+                        <Grid Grid.Row="3" Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="AdDiscoveryStatusText" Grid.Column="0" Text="" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Style="{StaticResource SecondaryButton}" Click="CloseServerModal_Click" Margin="0,0,8,0">
+                                    <TextBlock Text="Закрыть"/>
+                                </Button>
+                                <Button Style="{StaticResource PrimaryButton}" Click="ImportSelectedAdServers_Click">
+                                    <TextBlock Text="+ Добавить выбранные серверы"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================== TOAST NOTIFICATION ==================== -->
+        <Border x:Name="ToastBanner"
+                Visibility="Collapsed"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,28,24"
+                Background="{DynamicResource BgModalBrush}"
+                BorderBrush="{DynamicResource AccentBrightBrush}"
+                BorderThickness="1.5"
+                CornerRadius="10"
+                Padding="16,11">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="ToastIconText" Text="✓" FontSize="15" FontWeight="Bold" Foreground="#00E676" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="ToastMessageText" Text="Операция выполнена" FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" MaxWidth="460" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

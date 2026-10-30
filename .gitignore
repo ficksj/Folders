@@ -1,0 +1,10 @@
+bin/
+obj/
+publish/
+dist/
+.vs/
+*.user
+*.suo
+*.zip
+selftest.txt
+crash.log

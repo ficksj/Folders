@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>Folders</AssemblyName>
+    <Product>Folders</Product>
+    <Company>Crazy Monkeys</Company>
+    <Authors>Crazy Monkeys</Authors>
+    <Description>Folders — Современное управление сетевыми шарами Windows Server (by Crazy Monkeys)</Description>
+    <ApplicationIcon>Assets\monkey.ico</ApplicationIcon>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\monkey.png" />
+    <Resource Include="Assets\monkey.ico" />
+  </ItemGroup>
+
+</Project>
